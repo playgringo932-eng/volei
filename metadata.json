@@ -1,0 +1,6 @@
+{
+  "name": "VôleiPro - Sistema de Gestão e Presença de Vôlei",
+  "description": "Sistema completo de matrículas e turmas (07 a 17 anos), turnos e horários, chamada mobile em tempo real, relatórios de assiduidade em Excel e notificações automáticas aos responsáveis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
