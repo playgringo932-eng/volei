@@ -443,11 +443,11 @@ export function StudentIdCardModal({
                           >
                             <QRCodeDisplay
                               value={getStudentQrPayload(st, cls)}
-                              size={68}
+                              size={82}
                               altText={`QR Code Oficial Sincronizado - ${st.fullName}`}
                             />
                             <div className="flex flex-col text-[8px] font-black text-blue-900 leading-tight">
-                              <span className="text-[11px] text-blue-700">📷</span>
+                              <span className="text-[12px] text-blue-700">📷</span>
                               <span>QR CODE</span>
                               <span className="text-emerald-700">SINCRONIZADO</span>
                               <span className="text-[7px] text-blue-500 font-bold underline">Ampliar</span>
@@ -631,10 +631,10 @@ export function StudentIdCardModal({
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-2xl border-2 border-blue-200 inline-block shadow-inner">
+            <div className="p-3.5 bg-white rounded-2xl border-2 border-blue-300 inline-block shadow-inner">
               <QRCodeDisplay
                 value={getStudentQrPayload(currentStudent, currentClass)}
-                size={210}
+                size={240}
                 altText={`QR Code Oficial Sincronizado - ${currentStudent.fullName}`}
               />
             </div>

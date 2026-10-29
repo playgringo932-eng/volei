@@ -76,6 +76,18 @@ function AttendanceSessionBoard({
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const [activeNoteStudentId, setActiveNoteStudentId] = useState<string | null>(null);
 
+  // Synchronize live with storageService updates (e.g. from QR code scans in real-time)
+  React.useEffect(() => {
+    const handleSync = () => {
+      const existing = storageService.getSession(selectedClass.id, selectedDate);
+      if (existing && existing.entries) {
+        setCurrentEntries({ ...existing.entries });
+      }
+    };
+    const unsubscribe = storageService.subscribe(handleSync);
+    return () => unsubscribe();
+  }, [selectedClass.id, selectedDate]);
+
   // Save session to storage
   const persistSession = (entriesToSave = currentEntries) => {
     const session: DailyAttendanceSession = {

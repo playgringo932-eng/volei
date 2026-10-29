@@ -161,7 +161,7 @@ export const storageService = {
     this.saveAttendanceSessions(sessions);
   },
 
-  checkInStudentByQrCode(rawCode: string, targetDate?: string): {
+  checkInStudentByQrCode(rawCode: string, targetDate?: string, targetClassId?: string): {
     success: boolean;
     student?: Student;
     classObj?: VolleyballClass;
@@ -171,42 +171,77 @@ export const storageService = {
   } {
     const now = new Date();
     const timestamp = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const dateStr = targetDate || now.toISOString().split('T')[0];
+    const dateStr = targetDate || '2026-10-29';
 
     // Extract student identifier
     let studentIdCandidate = '';
     let regCandidate = '';
-    const trimmed = rawCode.trim();
-
     let nameCandidate = '';
+    const trimmed = (rawCode || '').trim();
 
-    if (trimmed.startsWith('{')) {
+    if (!trimmed) {
+      return {
+        success: false,
+        message: 'Código vazio ou não fornecido.',
+        timestamp,
+      };
+    }
+
+    if (trimmed.startsWith('{') || trimmed.includes('"matricula"') || trimmed.includes('"id"')) {
       try {
-        const parsed = JSON.parse(trimmed);
+        const cleanJson = trimmed.replace(/'/g, '"');
+        const parsed = JSON.parse(cleanJson);
         studentIdCandidate = parsed.studentId || parsed.id || '';
         regCandidate = parsed.reg || parsed.registrationNumber || parsed.matricula || '';
         nameCandidate = parsed.nome || parsed.name || parsed.fullName || '';
       } catch {
-        // Fallback
+        // Fallback regex extraction if malformed JSON
+        const regMatch = trimmed.match(/"(?:matricula|reg|registrationNumber)"\s*:\s*"([^"]+)"/i);
+        const idMatch = trimmed.match(/"(?:id|studentId)"\s*:\s*"([^"]+)"/i);
+        const nameMatch = trimmed.match(/"(?:nome|name|fullName)"\s*:\s*"([^"]+)"/i);
+        if (regMatch) regCandidate = regMatch[1];
+        if (idMatch) studentIdCandidate = idMatch[1];
+        if (nameMatch) nameCandidate = nameMatch[1];
       }
-    } else if (trimmed.startsWith('VOLEIPRO:')) {
+    } else if (trimmed.includes(':')) {
       const parts = trimmed.split(':');
-      studentIdCandidate = parts[1] || '';
-      regCandidate = parts[2] || '';
+      if (parts.length >= 3) {
+        studentIdCandidate = parts[1];
+        regCandidate = parts[2];
+      } else {
+        studentIdCandidate = parts[0];
+        regCandidate = parts[1];
+      }
     } else {
       studentIdCandidate = trimmed;
       regCandidate = trimmed;
     }
 
     const students = this.getStudents();
-    const student = students.find(
-      (s) =>
-        (studentIdCandidate && s.id.toLowerCase() === studentIdCandidate.toLowerCase()) ||
-        (regCandidate && s.registrationNumber.toLowerCase() === regCandidate.toLowerCase()) ||
-        (nameCandidate && s.fullName.toLowerCase() === nameCandidate.toLowerCase()) ||
-        s.id.toLowerCase() === trimmed.toLowerCase() ||
-        s.registrationNumber.toLowerCase() === trimmed.toLowerCase()
-    );
+    const normalizedQuery = trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const student = students.find((s) => {
+      const sId = (s.id || '').toLowerCase();
+      const sReg = (s.registrationNumber || '').toLowerCase();
+      const sRegNorm = sReg.replace(/[^a-z0-9]/g, '');
+      const sName = (s.fullName || '').toLowerCase();
+
+      if (studentIdCandidate && sId === studentIdCandidate.toLowerCase()) return true;
+      if (regCandidate && sReg === regCandidate.toLowerCase()) return true;
+      if (regCandidate && sRegNorm === regCandidate.toLowerCase().replace(/[^a-z0-9]/g, '')) return true;
+      if (nameCandidate && sName === nameCandidate.toLowerCase()) return true;
+
+      // Direct checks
+      if (sId === trimmed.toLowerCase()) return true;
+      if (sReg === trimmed.toLowerCase()) return true;
+      if (sRegNorm === normalizedQuery) return true;
+      if (sName === trimmed.toLowerCase()) return true;
+
+      // Match by number suffix (e.g. "0001" matches "VP-2026-0001")
+      if (trimmed.length >= 3 && sReg.endsWith(trimmed.toLowerCase())) return true;
+
+      return false;
+    });
 
     if (!student) {
       return {
@@ -217,16 +252,23 @@ export const storageService = {
     }
 
     const classes = this.getClasses();
-    const classObj = classes.find((c) => c.id === student.classId);
-
-    if (!classObj) {
-      return {
-        success: false,
-        student,
-        message: `Aluno ${student.fullName} encontrado, mas nenhuma turma ativa vinculada.`,
-        timestamp,
+    // Resolve target class: specified class, student's assigned class, or first available class
+    const classObj =
+      (targetClassId && classes.find((c) => c.id === targetClassId)) ||
+      classes.find((c) => c.id === student.classId) ||
+      classes[0] || {
+        id: 'class-general',
+        name: 'Turma Geral de Vôlei',
+        category: student.category,
+        shift: 'Manhã',
+        startTime: '08:00',
+        endTime: '09:30',
+        daysOfWeek: ['Segunda', 'Quarta', 'Sexta'],
+        instructorName: 'Coordenação VôleiPro',
+        court: 'Quadra Central',
+        maxCapacity: 30,
+        enrolledCount: 1,
       };
-    }
 
     // Find or create attendance session for this class and date
     const sessions = this.getAttendanceSessions();

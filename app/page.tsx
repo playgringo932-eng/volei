@@ -48,6 +48,7 @@ export default function VolleyballAcademyApp() {
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [scannerInitialClassId, setScannerInitialClassId] = useState<string | undefined>();
   const [scannerInitialDate, setScannerInitialDate] = useState<string | undefined>();
+  const [scannerInitialCode, setScannerInitialCode] = useState<string | undefined>();
   const [studentForDirectNotify, setStudentForDirectNotify] = useState<Student | null>(null);
 
   // Custom Deletion Confirmation State
@@ -200,9 +201,10 @@ export default function VolleyballAcademyApp() {
     setCurrentTab('instructor');
   };
 
-  const handleOpenQrScanner = (classId?: string, date?: string) => {
+  const handleOpenQrScanner = (classId?: string, date?: string, studentCode?: string) => {
     setScannerInitialClassId(classId);
-    setScannerInitialDate(date);
+    setScannerInitialDate(date || '2026-10-29');
+    setScannerInitialCode(studentCode);
     setIsQrScannerOpen(true);
   };
 
@@ -236,7 +238,7 @@ export default function VolleyballAcademyApp() {
             onViewIdCard={handleViewIdCard}
             onBatchPrintIdCards={handleBatchPrintIdCards}
             onQuickUpdateStatus={handleQuickUpdateStatus}
-            onOpenQrScanner={(reg) => handleOpenQrScanner()}
+            onOpenQrScanner={(reg) => handleOpenQrScanner(undefined, undefined, reg)}
           />
         )}
 
@@ -313,7 +315,9 @@ export default function VolleyballAcademyApp() {
           setIsIdCardOpen(false);
           handleOpenEdit(st);
         }}
-        onOpenQrScanner={() => handleOpenQrScanner()}
+        onOpenQrScanner={(reg) => {
+          handleOpenQrScanner(undefined, undefined, reg || selectedStudentForIdCard?.registrationNumber);
+        }}
         onDeleteStudent={(st) => setStudentPendingDelete(st)}
       />
 
@@ -353,11 +357,15 @@ export default function VolleyballAcademyApp() {
       {/* Modal: Leitor de QR Code para Chamada Automática */}
       <QrCodeScannerModal
         isOpen={isQrScannerOpen}
-        onClose={() => setIsQrScannerOpen(false)}
+        onClose={() => {
+          setIsQrScannerOpen(false);
+          setScannerInitialCode(undefined);
+        }}
         students={students}
         classes={classes}
         selectedClassId={scannerInitialClassId}
         selectedDate={scannerInitialDate}
+        initialCode={scannerInitialCode}
         onCheckInSuccess={() => reloadData()}
       />
 

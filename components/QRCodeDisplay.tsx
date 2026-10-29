@@ -21,7 +21,7 @@ export function QRCodeDisplay({
   size = 120,
   className = '',
   altText = 'QR Code de Presença do Aluno',
-  colorDark = '#0F2A4A',
+  colorDark = '#0F172A',
   colorLight = '#FFFFFF',
 }: QRCodeDisplayProps) {
   const qrSvgData = useMemo(() => {
@@ -30,7 +30,9 @@ export function QRCodeDisplay({
         errorCorrectionLevel: 'M',
       });
       const moduleCount = qr.modules.size;
-      const margin = 1;
+      // Standard QR Code quiet zone is at least 4 modules wide
+      // This is mandatory for jsQR and smartphone cameras to detect finder patterns
+      const margin = 4;
       const totalSize = moduleCount + margin * 2;
       const rects: string[] = [];
 
@@ -56,7 +58,7 @@ export function QRCodeDisplay({
     return (
       <div
         style={{ width: size, height: size }}
-        className={`bg-slate-100 border border-slate-300 rounded-lg flex flex-col items-center justify-center text-[10px] text-blue-900 font-bold p-1 text-center ${className}`}
+        className={`bg-white border-2 border-slate-300 rounded-xl flex flex-col items-center justify-center text-[10px] text-blue-900 font-bold p-1 text-center ${className}`}
       >
         <span>QR CODE</span>
       </div>
@@ -65,7 +67,7 @@ export function QRCodeDisplay({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center bg-white rounded-lg p-1 border-2 border-blue-300 shadow-2xs ${className}`}
+      className={`relative inline-flex items-center justify-center bg-white rounded-xl p-1.5 border border-slate-300 shadow-xs ${className}`}
       style={{ width: size, height: size }}
       title={altText}
     >
