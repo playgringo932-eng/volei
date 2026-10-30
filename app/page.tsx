@@ -21,6 +21,11 @@ import { StudentIdCardModal } from '@/components/StudentIdCardModal';
 import { DatabaseBackupModal } from '@/components/DatabaseBackupModal';
 import { QrCodeScannerModal } from '@/components/QrCodeScannerModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { SupabaseSyncModal } from '@/components/SupabaseSyncModal';
+import {
+  saveAllToSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase';
 import { CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function VolleyballAcademyApp() {
@@ -50,6 +55,10 @@ export default function VolleyballAcademyApp() {
   const [scannerInitialDate, setScannerInitialDate] = useState<string | undefined>();
   const [scannerInitialCode, setScannerInitialCode] = useState<string | undefined>();
   const [studentForDirectNotify, setStudentForDirectNotify] = useState<Student | null>(null);
+
+  // Supabase Cloud Sync States
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+  const [isSavingSupabase, setIsSavingSupabase] = useState(false);
 
   // Custom Deletion Confirmation State
   const [studentPendingDelete, setStudentPendingDelete] = useState<Student | null>(null);
@@ -83,6 +92,35 @@ export default function VolleyballAcademyApp() {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleSaveToSupabase = async () => {
+    if (!isSupabaseConfigured()) {
+      setIsSupabaseModalOpen(true);
+      showToast('Insira a URL e Chave Anon do Supabase para salvar na nuvem.', 'delete');
+      return;
+    }
+
+    setIsSavingSupabase(true);
+    try {
+      const res = await saveAllToSupabase();
+
+      if (res.success) {
+        const stats = res.stats;
+        showToast(
+          `Salvo com sucesso no Supabase! (${stats?.studentsCount || 0} alunos, ${stats?.classesCount || 0} turmas, ${stats?.sessionsCount || 0} presenças)`,
+          'success'
+        );
+      } else {
+        showToast(`Erro ao salvar no Supabase: ${res.message}`, 'delete');
+        setIsSupabaseModalOpen(true);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado';
+      showToast(`Falha de conexão com Supabase: ${msg}`, 'delete');
+    } finally {
+      setIsSavingSupabase(false);
+    }
+  };
 
   // CRUD Handlers
   const handleSaveStudent = (savedStudent: Student) => {
@@ -219,6 +257,9 @@ export default function VolleyballAcademyApp() {
         onOpenNewStudent={handleOpenNewStudent}
         onOpenBackupModal={() => setIsBackupOpen(true)}
         onOpenQrScanner={() => handleOpenQrScanner()}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+        onSaveToSupabase={handleSaveToSupabase}
+        isSavingSupabase={isSavingSupabase}
         totalStudents={students.length}
         activeStudents={activeStudentsCount}
       />
@@ -239,6 +280,9 @@ export default function VolleyballAcademyApp() {
             onBatchPrintIdCards={handleBatchPrintIdCards}
             onQuickUpdateStatus={handleQuickUpdateStatus}
             onOpenQrScanner={(reg) => handleOpenQrScanner(undefined, undefined, reg)}
+            onSaveToSupabase={handleSaveToSupabase}
+            isSavingSupabase={isSavingSupabase}
+            onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
           />
         )}
 
@@ -379,6 +423,16 @@ export default function VolleyballAcademyApp() {
           if (studentPendingDelete) {
             handleDeleteStudent(studentPendingDelete.id);
           }
+        }}
+      />
+
+      {/* Modal: Banco de Dados Supabase & Migrations */}
+      <SupabaseSyncModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        onDataSyncSuccess={() => {
+          reloadData();
+          showToast('Dados sincronizados com o Supabase com sucesso!', 'success');
         }}
       />
 

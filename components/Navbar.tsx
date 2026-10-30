@@ -15,6 +15,8 @@ import {
   Shield,
   Camera,
   QrCode,
+  CloudUpload,
+  Server,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -23,6 +25,9 @@ interface NavbarProps {
   onOpenNewStudent: () => void;
   onOpenBackupModal: () => void;
   onOpenQrScanner?: () => void;
+  onOpenSupabaseModal?: () => void;
+  onSaveToSupabase?: () => void;
+  isSavingSupabase?: boolean;
   totalStudents: number;
   activeStudents: number;
 }
@@ -33,6 +38,9 @@ export function Navbar({
   onOpenNewStudent,
   onOpenBackupModal,
   onOpenQrScanner,
+  onOpenSupabaseModal,
+  onSaveToSupabase,
+  isSavingSupabase = false,
   totalStudents,
   activeStudents,
 }: NavbarProps) {
@@ -146,6 +154,22 @@ export function Navbar({
 
           {/* Primary Action Buttons */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Salvar no Banco de Dados Supabase Button */}
+            {onSaveToSupabase && (
+              <button
+                onClick={onSaveToSupabase}
+                disabled={isSavingSupabase}
+                title="Salvar e Sincronizar Tudo no Banco de Dados Supabase"
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-xs shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer border border-emerald-700 disabled:opacity-50"
+              >
+                <CloudUpload className={`w-4 h-4 text-emerald-100 ${isSavingSupabase ? 'animate-bounce' : ''}`} />
+                <span className="hidden md:inline">
+                  {isSavingSupabase ? 'Salvando...' : 'Salvar no Banco'}
+                </span>
+                <span className="md:hidden">Salvar</span>
+              </button>
+            )}
+
             {onOpenQrScanner && (
               <button
                 onClick={onOpenQrScanner}
@@ -158,9 +182,21 @@ export function Navbar({
               </button>
             )}
 
+            {/* Supabase Cloud Database & Migrations Button */}
+            {onOpenSupabaseModal && (
+              <button
+                onClick={onOpenSupabaseModal}
+                title="Configuração do Supabase & Migrations SQL"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-900 border border-slate-300 transition-colors cursor-pointer text-xs font-bold"
+              >
+                <Server className="w-4 h-4 text-blue-700" />
+                <span className="hidden xl:inline">Config. Supabase</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenBackupModal}
-              title="Gerenciar Dados e Backups"
+              title="Gerenciar Backups JSON"
               className="hidden sm:flex p-2.5 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 transition-colors"
             >
               <Database className="w-4 h-4" />
@@ -190,6 +226,42 @@ export function Navbar({
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-4 space-y-1 shadow-lg">
+          {/* Quick Action: Salvar no Supabase on Mobile */}
+          {onSaveToSupabase && (
+            <button
+              onClick={() => {
+                onSaveToSupabase();
+                setMobileMenuOpen(false);
+              }}
+              disabled={isSavingSupabase}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-extrabold bg-emerald-600 text-white shadow-sm transition-colors mb-2"
+            >
+              <div className="flex items-center gap-2.5">
+                <CloudUpload className="w-4 h-4 text-emerald-100" />
+                <span>Salvar no Banco de Dados Supabase</span>
+              </div>
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-800 text-white">
+                {isSavingSupabase ? 'Gravando...' : 'Nuvem'}
+              </span>
+            </button>
+          )}
+
+          {/* Supabase Button on Mobile */}
+          {onOpenSupabaseModal && (
+            <button
+              onClick={() => {
+                onOpenSupabaseModal();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-900 border border-blue-200 transition-colors mb-2 cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Server className="w-4 h-4 text-blue-700" />
+                <span>Configurar Supabase & Migrations SQL</span>
+              </div>
+              <span className="text-[10px] text-blue-700 font-bold underline">Abrir</span>
+            </button>
+          )}
           {onOpenQrScanner && (
             <button
               onClick={() => {

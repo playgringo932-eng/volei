@@ -19,6 +19,9 @@ import {
   ChevronDown,
   Camera,
   QrCode,
+  CloudUpload,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import { Student, VolleyballClass, EnrollmentStatus } from '@/types/volleyball';
 import { storageService } from '@/lib/storage';
@@ -40,6 +43,9 @@ interface StudentsManagementProps {
   onBatchPrintIdCards?: () => void;
   onQuickUpdateStatus?: (studentId: string, status: EnrollmentStatus) => void;
   onOpenQrScanner?: (studentRegistration?: string) => void;
+  onSaveToSupabase?: () => void;
+  isSavingSupabase?: boolean;
+  onOpenSupabaseModal?: () => void;
 }
 
 export function StudentsManagement({
@@ -54,6 +60,9 @@ export function StudentsManagement({
   onBatchPrintIdCards,
   onQuickUpdateStatus,
   onOpenQrScanner,
+  onSaveToSupabase,
+  isSavingSupabase = false,
+  onOpenSupabaseModal,
 }: StudentsManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
@@ -164,6 +173,22 @@ export function StudentsManagement({
               <QrCode className="w-4 h-4" />
               <span>Ver Carteirinhas com QR ({students.length})</span>
             </button>
+
+            {onSaveToSupabase && (
+              <button
+                onClick={onSaveToSupabase}
+                disabled={isSavingSupabase}
+                className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md border border-emerald-300 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                title="Salvar instantaneamente todas as alterações no banco de dados do Supabase"
+              >
+                {isSavingSupabase ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                ) : (
+                  <CloudUpload className="w-4 h-4 text-white stroke-[2.5]" />
+                )}
+                <span>{isSavingSupabase ? 'Salvando...' : '☁️ Salvar no Supabase'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -217,6 +242,23 @@ export function StudentsManagement({
               <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
               <span>Exportar Excel ({filteredStudents.length})</span>
             </button>
+
+            {/* Save to Supabase Cloud Button */}
+            {onSaveToSupabase && (
+              <button
+                onClick={onSaveToSupabase}
+                disabled={isSavingSupabase}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-bold shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+                title="Salvar todos os alunos e alterações no banco de dados do Supabase"
+              >
+                {isSavingSupabase ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                ) : (
+                  <CloudUpload className="w-4 h-4 text-emerald-100 stroke-[2.5]" />
+                )}
+                <span>{isSavingSupabase ? 'Salvando...' : 'Salvar no Supabase'}</span>
+              </button>
+            )}
 
             {/* New Student Button */}
             <button
