@@ -12,11 +12,12 @@ import {
   Database,
   Menu,
   X,
-  Shield,
   Camera,
   QrCode,
   Save,
   RefreshCw,
+  CloudUpload,
+  Settings,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -27,6 +28,8 @@ interface NavbarProps {
   onOpenQrScanner?: () => void;
   onSaveData?: () => void;
   isSaving?: boolean;
+  onOpenSupabaseModal?: () => void;
+  isCloudConnected?: boolean;
   totalStudents: number;
   activeStudents: number;
 }
@@ -39,6 +42,8 @@ export function Navbar({
   onOpenQrScanner,
   onSaveData,
   isSaving = false,
+  onOpenSupabaseModal,
+  isCloudConnected = false,
   totalStudents,
   activeStudents,
 }: NavbarProps) {
@@ -157,15 +162,29 @@ export function Navbar({
               <button
                 onClick={onSaveData}
                 disabled={isSaving}
-                title="Salvar todas as alterações e dados da academia"
+                title={isCloudConnected ? "Salvar tudo no banco Supabase (sincroniza com todos os aparelhos)" : "Conectar ao Supabase para salvar e sincronizar"}
                 className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer border border-emerald-500 disabled:opacity-50"
               >
                 {isSaving ? (
                   <RefreshCw className="w-4 h-4 animate-spin text-white" />
                 ) : (
-                  <Save className="w-4 h-4 text-emerald-100" />
+                  <CloudUpload className="w-4 h-4 text-emerald-100" />
                 )}
-                <span>{isSaving ? 'Salvando...' : 'Salvar Dados'}</span>
+                <span>{isSaving ? 'Salvando...' : (isCloudConnected ? 'Salvar no Supabase' : 'Conectar Supabase')}</span>
+                <span
+                  className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-300 animate-pulse' : 'bg-amber-300'}`}
+                  title={isCloudConnected ? 'Supabase Conectado' : 'Supabase Pendente'}
+                />
+              </button>
+            )}
+
+            {onOpenSupabaseModal && (
+              <button
+                onClick={onOpenSupabaseModal}
+                title="Configurações do Supabase & Migrations SQL"
+                className="hidden sm:flex p-2.5 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 transition-colors cursor-pointer"
+              >
+                <Settings className="w-4 h-4" />
               </button>
             )}
 
@@ -215,12 +234,12 @@ export function Navbar({
                 {isSaving ? (
                   <RefreshCw className="w-4 h-4 animate-spin text-white" />
                 ) : (
-                  <Save className="w-4 h-4 text-emerald-100" />
+                  <CloudUpload className="w-4 h-4 text-emerald-100" />
                 )}
-                <span>{isSaving ? 'Salvando dados...' : 'Salvar Dados da Academia'}</span>
+                <span>{isSaving ? 'Salvando...' : (isCloudConnected ? 'Salvar no Supabase (Nuvem)' : 'Conectar Supabase')}</span>
               </div>
-              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-800 text-white">
-                Salvar
+              <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${isCloudConnected ? 'bg-emerald-800' : 'bg-amber-600'} text-white`}>
+                {isCloudConnected ? 'Salvar' : 'Conectar'}
               </span>
             </button>
           )}

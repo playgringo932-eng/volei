@@ -21,6 +21,13 @@ import { StudentIdCardModal } from '@/components/StudentIdCardModal';
 import { DatabaseBackupModal } from '@/components/DatabaseBackupModal';
 import { QrCodeScannerModal } from '@/components/QrCodeScannerModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
+import { SupabaseConnectionModal } from '@/components/SupabaseConnectionModal';
+import {
+  isSupabaseConfigured,
+  saveAllToSupabase,
+  loadAllFromSupabase,
+  syncServerAndDevices,
+} from '@/lib/supabase';
 import { CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function VolleyballAcademyApp() {
@@ -51,8 +58,10 @@ export default function VolleyballAcademyApp() {
   const [scannerInitialCode, setScannerInitialCode] = useState<string | undefined>();
   const [studentForDirectNotify, setStudentForDirectNotify] = useState<Student | null>(null);
 
-  // Estado do Novo Botão Único de Salvamento
+  // Estado do Botão Único de Salvamento & Supabase
   const [isSavingData, setIsSavingData] = useState(false);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+  const [isCloudConnected, setIsCloudConnected] = useState(() => isSupabaseConfigured());
 
   // Custom Deletion Confirmation State
   const [studentPendingDelete, setStudentPendingDelete] = useState<Student | null>(null);
@@ -87,21 +96,76 @@ export default function VolleyballAcademyApp() {
     return () => unsubscribe();
   }, []);
 
-  // O Novo Botão de Salvamento Único do Sistema
-  const handleSaveData = () => {
+  // Sincronização automática entre servidor, PC e Celular na inicialização
+  useEffect(() => {
+    async function initCrossDeviceSync() {
+      // 1. Pareia via servidor compartilhado ou QR Code de pareamento (?sync_url=...)
+      const synced = await syncServerAndDevices();
+      if (synced || isSupabaseConfigured()) {
+        setIsCloudConnected(true);
+        const res = await loadAllFromSupabase();
+        if (res.success && res.hasData) {
+          reloadData();
+          showToast('✓ Sincronizado com a nuvem Supabase!', 'success');
+        }
+      }
+    }
+    initCrossDeviceSync();
+  }, []);
+
+  // Atualização em tempo real ao focar ou reabrir o app no celular
+  useEffect(() => {
+    const handleDeviceFocus = () => {
+      if (isSupabaseConfigured()) {
+        loadAllFromSupabase().then((res) => {
+          if (res.success && res.hasData) {
+            reloadData();
+          }
+        });
+      }
+    };
+    window.addEventListener('focus', handleDeviceFocus);
+    document.addEventListener('visibilitychange', handleDeviceFocus);
+    return () => {
+      window.removeEventListener('focus', handleDeviceFocus);
+      document.removeEventListener('visibilitychange', handleDeviceFocus);
+    };
+  }, []);
+
+  // O Único Botão de Salvamento: Salva no Supabase e em todos os aparelhos
+  const handleSaveData = async () => {
+    if (!isSupabaseConfigured()) {
+      setIsSupabaseModalOpen(true);
+      showToast('Conecte suas chaves do Supabase para salvar e sincronizar.', 'delete');
+      return;
+    }
+
     setIsSavingData(true);
-    setTimeout(() => {
-      // Garante a persistência de todo o banco de dados da academia
-      storageService.saveStudents(students);
-      storageService.saveClasses(classes);
-      storageService.saveAttendanceSessions(sessions);
-      storageService.saveNotifications(notifications);
+    // Salva localmente primeiro
+    storageService.saveStudents(students);
+    storageService.saveClasses(classes);
+    storageService.saveAttendanceSessions(sessions);
+    storageService.saveNotifications(notifications);
+
+    try {
+      const res = await saveAllToSupabase();
+      if (res.success) {
+        setIsCloudConnected(true);
+        showToast(
+          `✓ Salvo com sucesso no Supabase! (${students.length} alunos e ${classes.length} turmas). Sincronizado para todos os aparelhos!`,
+          'success'
+        );
+      } else {
+        showToast(`Erro ao salvar no Supabase: ${res.message}`, 'delete');
+        setIsSupabaseModalOpen(true);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha na conexão';
+      showToast(`Erro ao salvar no Supabase: ${msg}`, 'delete');
+      setIsSupabaseModalOpen(true);
+    } finally {
       setIsSavingData(false);
-      showToast(
-        `✓ Dados salvos com sucesso! (${students.length} alunos, ${classes.length} turmas e ${sessions.length} presenças)`,
-        'success'
-      );
-    }, 300);
+    }
   };
 
   // CRUD Handlers
@@ -231,7 +295,7 @@ export default function VolleyballAcademyApp() {
   const activeStudentsCount = students.filter((s) => s.status === 'Ativo').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans" suppressHydrationWarning>
       {/* Top Navbar */}
       <Navbar
         currentTab={currentTab}
@@ -241,6 +305,8 @@ export default function VolleyballAcademyApp() {
         onOpenQrScanner={() => handleOpenQrScanner()}
         onSaveData={handleSaveData}
         isSaving={isSavingData}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+        isCloudConnected={isCloudConnected}
         totalStudents={students.length}
         activeStudents={activeStudentsCount}
       />
@@ -401,6 +467,20 @@ export default function VolleyballAcademyApp() {
           if (studentPendingDelete) {
             handleDeleteStudent(studentPendingDelete.id);
           }
+        }}
+      />
+
+      {/* Modal de Conexão e Sincronização com Supabase */}
+      <SupabaseConnectionModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => {
+          setIsSupabaseModalOpen(false);
+          setIsCloudConnected(isSupabaseConfigured());
+        }}
+        onSyncSuccess={() => {
+          setIsCloudConnected(true);
+          reloadData();
+          showToast('✓ Dados sincronizados com o Supabase com sucesso!', 'success');
         }}
       />
 
