@@ -88,6 +88,15 @@ export function StudentIdCardModal({
     storageService.saveSponsorSize(newSize);
   };
 
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setSponsorsList(storageService.getSponsors());
+      setSponsorSize(storageService.getSponsorSize());
+    }
+  }
+
   // Sync sponsors and size with global storage updates
   React.useEffect(() => {
     const unsubscribe = storageService.subscribe(() => {
@@ -721,7 +730,10 @@ export function StudentIdCardModal({
       {/* Modal: Gerenciador de Patrocinadores da Carteirinha */}
       <SponsorsManagerModal
         isOpen={isSponsorsModalOpen}
-        onClose={() => setIsSponsorsModalOpen(false)}
+        onClose={() => {
+          setIsSponsorsModalOpen(false);
+          handleSponsorsUpdate();
+        }}
         onSponsorsChange={handleSponsorsUpdate}
       />
     </div>

@@ -7,6 +7,7 @@ import {
   VolleyballClass,
   DailyAttendanceSession,
   NotificationLog,
+  SponsorLogo,
 } from '@/types/volleyball';
 
 export interface SupabaseConfig {
@@ -109,7 +110,7 @@ export async function syncServerAndDevices(): Promise<boolean> {
     // ignore
   }
 
-  // 2. Consulta o servidor compartilhado se há chaves configuradas
+  // 2. Consulta o servidor compartilhado se há chaves ou dados configurados
   try {
     const res = await fetch('/api/sync');
     if (res.ok) {
@@ -118,9 +119,16 @@ export async function syncServerAndDevices(): Promise<boolean> {
         const current = getSupabaseConfig();
         if (!current.url || !current.anonKey) {
           saveSupabaseConfig(json.config);
-          return true;
         }
       }
+      // Restaura patrocinadores e tamanho compartilhados
+      if (json.data?.sponsors && Array.isArray(json.data.sponsors) && json.data.sponsors.length > 0) {
+        storageService.saveSponsors(json.data.sponsors);
+      }
+      if (typeof json.data?.sponsorSize === 'number') {
+        storageService.saveSponsorSize(json.data.sponsorSize);
+      }
+      return true;
     }
   } catch {
     // ignore
@@ -244,6 +252,7 @@ export async function saveAllToSupabase(): Promise<{
     classes: number;
     sessions: number;
     notifications: number;
+    sponsors?: number;
     timestamp: string;
   };
 }> {
@@ -378,6 +387,28 @@ export async function saveAllToSupabase(): Promise<{
       if (errN) throw new Error(`Erro ao salvar notificações: ${errN.message}`);
     }
 
+    // 5. Patrocinadores da Carteirinha
+    const sponsors = storageService.getSponsors();
+    const sponsorSize = storageService.getSponsorSize();
+    const formattedSponsors = sponsors.map((sp) => ({
+      id: sp.id,
+      name: sp.name,
+      category: sp.category,
+      logo_url: sp.logoUrl,
+      is_active: sp.isActive,
+      updated_at: new Date().toISOString(),
+    }));
+
+    if (formattedSponsors.length > 0) {
+      try {
+        await client
+          .from('sponsors')
+          .upsert(formattedSponsors, { onConflict: 'id' });
+      } catch {
+        // Tabela de sponsors opcional no Supabase
+      }
+    }
+
     const timestamp = new Date().toLocaleString('pt-BR');
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_LAST_SYNC, timestamp);
@@ -392,6 +423,8 @@ export async function saveAllToSupabase(): Promise<{
             students: formattedStudents,
             sessions: formattedSessions,
             notifications: formattedNotifs,
+            sponsors,
+            sponsorSize,
           },
         }),
       }).catch(() => {});
@@ -399,12 +432,13 @@ export async function saveAllToSupabase(): Promise<{
 
     return {
       success: true,
-      message: 'Todos os dados foram salvos com sucesso no Supabase e já estão disponíveis em qualquer aparelho!',
+      message: 'Todos os dados e patrocinadores foram salvos com sucesso no Supabase e já estão sincronizados!',
       stats: {
         students: formattedStudents.length,
         classes: formattedClasses.length,
         sessions: formattedSessions.length,
         notifications: formattedNotifs.length,
+        sponsors: formattedSponsors.length,
         timestamp,
       },
     };
@@ -526,6 +560,23 @@ export async function loadAllFromSupabase(): Promise<{
       storageService.saveNotifications(mappedNotifs);
     }
 
+    // Carrega patrocinadores do Supabase se existirem
+    try {
+      const { data: dbSponsors } = await client.from('sponsors').select('*');
+      if (dbSponsors && dbSponsors.length > 0) {
+        const mappedSponsors: SponsorLogo[] = dbSponsors.map((sp) => ({
+          id: sp.id,
+          name: sp.name,
+          category: sp.category,
+          logoUrl: sp.logo_url,
+          isActive: sp.is_active,
+        }));
+        storageService.saveSponsors(mappedSponsors);
+      }
+    } catch {
+      // Ignora se tabela sponsors ainda não foi criada
+    }
+
     return {
       success: true,
       hasData,
@@ -630,6 +681,17 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 5. Tabela de Logotipos e Patrocinadores Oficiais da Carteirinha
+CREATE TABLE IF NOT EXISTS sponsors (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  logo_url TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Índices de Alta Performance
 CREATE INDEX IF NOT EXISTS idx_students_reg ON students(registration_number);
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
@@ -637,12 +699,14 @@ CREATE INDEX IF NOT EXISTS idx_students_status ON students(status);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_sessions(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_class ON attendance_sessions(class_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_student ON notifications(student_id);
+CREATE INDEX IF NOT EXISTS idx_sponsors_active ON sponsors(is_active);
 
 -- Configuração de Row Level Security (RLS) Permissivo para Anon Key
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sponsors ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "classes_all" ON classes;
 CREATE POLICY "classes_all" ON classes FOR ALL USING (true) WITH CHECK (true);
@@ -655,6 +719,9 @@ CREATE POLICY "attendance_sessions_all" ON attendance_sessions FOR ALL USING (tr
 
 DROP POLICY IF EXISTS "notifications_all" ON notifications;
 CREATE POLICY "notifications_all" ON notifications FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "sponsors_all" ON sponsors;
+CREATE POLICY "sponsors_all" ON sponsors FOR ALL USING (true) WITH CHECK (true);
 `;
 }
 

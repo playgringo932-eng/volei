@@ -37,12 +37,38 @@ export function SponsorsManagerModal({
   const [logoSourceMode, setLogoSourceMode] = useState<'upload' | 'url'>('upload');
   const [sponsorSize, setSponsorSize] = useState<number>(() => storageService.getSponsorSize());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setSponsors(storageService.getSponsors());
+      setSponsorSize(storageService.getSponsorSize());
+      setErrorMsg(null);
+    }
+  }
+
+  // Subscribe to external storage updates
+  React.useEffect(() => {
+    const unsubscribe = storageService.subscribe(() => {
+      setSponsors(storageService.getSponsors());
+      setSponsorSize(storageService.getSponsorSize());
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const showSaveNotice = (msg: string) => {
+    setSaveSuccessNotice(msg);
+    setTimeout(() => setSaveSuccessNotice(null), 2500);
+  };
 
   const handleSizeChange = (newSize: number) => {
     setSponsorSize(newSize);
     storageService.saveSponsorSize(newSize);
+    showSaveNotice(`Tamanho atualizado para ${newSize}px!`);
     if (onSponsorsChange) onSponsorsChange();
   };
 
@@ -55,14 +81,53 @@ export function SponsorsManagerModal({
   const handleToggle = (id: string) => {
     storageService.toggleSponsor(id);
     reloadSponsors();
+    showSaveNotice('Visibilidade do patrocinador salva com sucesso!');
   };
 
   const handleDelete = (id: string) => {
     storageService.deleteSponsor(id);
     reloadSponsors();
+    showSaveNotice('Patrocinador removido e alterações salvas!');
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Redimensiona o logotipo para formato leve e otimizado (evita exceder o limite do navegador)
+  const resizeLogo = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_WIDTH = 300;
+          const MAX_HEIGHT = 150;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(e.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => reject(new Error('Erro ao ler a imagem.'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Erro no arquivo.'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -71,18 +136,13 @@ export function SponsorsManagerModal({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMsg('A imagem deve ter no máximo 2MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setNewLogoUrl(base64);
+    try {
       setErrorMsg(null);
-    };
-    reader.readAsDataURL(file);
+      const optimizedBase64 = await resizeLogo(file);
+      setNewLogoUrl(optimizedBase64);
+    } catch {
+      setErrorMsg('Não foi possível processar a imagem. Tente outra foto.');
+    }
   };
 
   const handleSaveNew = (e: React.FormEvent) => {
@@ -107,6 +167,7 @@ export function SponsorsManagerModal({
 
     storageService.addSponsor(newSponsor);
     reloadSponsors();
+    showSaveNotice(`Patrocinador "${newName.trim()}" cadastrado e salvo com sucesso!`);
     setIsAddingNew(false);
     setNewName('');
     setNewCategory('Patrocinador Oficial');
@@ -123,6 +184,7 @@ export function SponsorsManagerModal({
       if (target && !target.isActive) {
         storageService.toggleSponsor(target.id);
         reloadSponsors();
+        showSaveNotice(`Patrocinador "${target.name}" ativado com sucesso!`);
       }
       return;
     }
@@ -134,11 +196,13 @@ export function SponsorsManagerModal({
     };
     storageService.addSponsor(toAdd);
     reloadSponsors();
+    showSaveNotice(`Patrocinador "${preset.name}" adicionado e salvo com sucesso!`);
   };
 
   const handleResetToDefaults = () => {
     storageService.saveSponsors(DEFAULT_SPONSORS);
     reloadSponsors();
+    showSaveNotice('Patrocinadores restaurados para os padrões com sucesso!');
   };
 
   if (!isOpen) return null;
@@ -172,11 +236,19 @@ export function SponsorsManagerModal({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
+          {/* Banner de Confirmação de Salvamento Automático */}
+          {saveSuccessNotice && (
+            <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-3 text-xs font-bold text-emerald-900 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
+              <span>{saveSuccessNotice}</span>
+            </div>
+          )}
+
           {/* Info Banner */}
           <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 text-xs text-blue-900 flex items-start gap-2.5">
             <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              Os patrocinadores marcados como <strong>ativos</strong> aparecerão automaticamente em todas as carteirinhas de atletas (na tela e na impressão/exportação).
+              Os patrocinadores marcados como <strong>ativos</strong> são <strong>salvos automaticamente</strong> e aparecerão no verso de todas as carteirinhas de atletas.
             </div>
           </div>
 

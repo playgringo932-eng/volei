@@ -364,8 +364,23 @@ export const storageService = {
 
   saveSponsors(sponsors: SponsorLogo[]): void {
     if (!isClient) return;
-    localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(sponsors));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(sponsors));
+    } catch (err) {
+      console.warn('Erro ao salvar patrocinadores no localStorage:', err);
+    }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsors' } }));
+
+    // Sincroniza em segundo plano no servidor compartilhado
+    try {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { sponsors } }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
   },
 
   addSponsor(sponsor: SponsorLogo): void {
@@ -398,24 +413,39 @@ export const storageService = {
   },
 
   getSponsorSize(): number {
-    if (!isClient) return 26;
+    if (!isClient) return 28;
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SPONSOR_SIZE);
       if (saved) {
         const num = parseInt(saved, 10);
         if (!isNaN(num) && num >= 14 && num <= 70) return num;
       }
-      return 26;
+      return 28;
     } catch {
-      return 26;
+      return 28;
     }
   },
 
   saveSponsorSize(size: number): void {
     if (!isClient) return;
     const clamped = Math.max(14, Math.min(70, Math.round(size)));
-    localStorage.setItem(STORAGE_KEYS.SPONSOR_SIZE, clamped.toString());
+    try {
+      localStorage.setItem(STORAGE_KEYS.SPONSOR_SIZE, clamped.toString());
+    } catch {
+      // ignore
+    }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsor_size', size: clamped } }));
+
+    // Sincroniza no servidor compartilhado
+    try {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { sponsorSize: clamped } }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
   },
 
   // --- ANALYTICS / CALCULATIONS ---
@@ -492,6 +522,8 @@ export const storageService = {
       classes: this.getClasses(),
       attendance: this.getAttendanceSessions(),
       notifications: this.getNotifications(),
+      sponsors: this.getSponsors(),
+      sponsorSize: this.getSponsorSize(),
     };
     return JSON.stringify(backup, null, 2);
   },
@@ -511,6 +543,12 @@ export const storageService = {
       }
       if (parsed.notifications && Array.isArray(parsed.notifications)) {
         this.saveNotifications(parsed.notifications);
+      }
+      if (parsed.sponsors && Array.isArray(parsed.sponsors)) {
+        this.saveSponsors(parsed.sponsors);
+      }
+      if (typeof parsed.sponsorSize === 'number') {
+        this.saveSponsorSize(parsed.sponsorSize);
       }
       return true;
     } catch {

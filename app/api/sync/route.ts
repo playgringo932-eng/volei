@@ -12,6 +12,8 @@ interface SharedState {
     classes?: unknown[];
     sessions?: unknown[];
     notifications?: unknown[];
+    sponsors?: unknown[];
+    sponsorSize?: number;
     updatedAt?: string;
   };
 }
@@ -95,7 +97,13 @@ export async function POST(req: NextRequest) {
         url: body.config?.url?.trim() ?? current.config.url,
         anonKey: body.config?.anonKey?.trim() ?? current.config.anonKey,
       },
-      data: body.data ? { ...body.data, updatedAt: new Date().toISOString() } : current.data,
+      data: body.data
+        ? {
+            ...(current.data || {}),
+            ...body.data,
+            updatedAt: new Date().toISOString(),
+          }
+        : current.data,
     };
 
     writeSharedState(updatedState);
