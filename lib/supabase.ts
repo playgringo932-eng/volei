@@ -121,14 +121,9 @@ export async function syncServerAndDevices(): Promise<boolean> {
           saveSupabaseConfig(json.config);
         }
       }
-      // Restaura patrocinadores e tamanho compartilhados
-      if (json.data?.sponsors && Array.isArray(json.data.sponsors) && json.data.sponsors.length > 0) {
-        storageService.saveSponsors(json.data.sponsors);
-      }
-      if (typeof json.data?.sponsorSize === 'number') {
-        storageService.saveSponsorSize(json.data.sponsorSize);
-      }
-      return true;
+      // Puxa todos os dados compartilhados (alunos, turmas, presenças, patrocinadores, etc.)
+      const pulled = await storageService.pullFromSharedSync();
+      return pulled;
     }
   } catch {
     // ignore

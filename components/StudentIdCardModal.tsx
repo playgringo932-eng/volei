@@ -22,6 +22,7 @@ import {
   Building2,
   Plus,
   Sliders,
+  RefreshCw,
 } from 'lucide-react';
 import { Student, VolleyballClass, SponsorLogo } from '@/types/volleyball';
 import { getAthletePhoto, readFileAsBase64 } from '@/lib/avatarHelpers';
@@ -86,6 +87,15 @@ export function StudentIdCardModal({
   const handleQuickSizeChange = (newSize: number) => {
     setSponsorSize(newSize);
     storageService.saveSponsorSize(newSize);
+  };
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    await storageService.pullFromSharedSync();
+    handleSponsorsUpdate();
+    setTimeout(() => setIsSyncing(false), 700);
   };
 
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -302,6 +312,16 @@ export function StudentIdCardModal({
               >
                 <Building2 className="w-3.5 h-3.5 text-blue-700" />
                 <span>Patrocinadores ({activeSponsors.length})</span>
+              </button>
+
+              <button
+                onClick={handleForceSync}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-300 hover:bg-blue-50 text-blue-900 font-bold text-xs shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                title="Sincronizar dados da carteirinha entre Celular e PC"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-blue-700 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
               </button>
 
               <button

@@ -31,6 +31,19 @@ const SYNC_EVENT = 'voleipro_data_updated';
 // Helper to check browser environment
 const isClient = typeof window !== 'undefined';
 
+function syncToServer(data: Record<string, unknown>): void {
+  if (!isClient) return;
+  try {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    }).catch(() => {});
+  } catch {
+    // ignore
+  }
+}
+
 export const storageService = {
   // --- STUDENTS ---
   getStudents(): Student[] {
@@ -47,10 +60,15 @@ export const storageService = {
     }
   },
 
-  saveStudents(students: Student[]): void {
+  saveStudents(students: Student[], sync = true): void {
     if (!isClient) return;
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    try {
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+    } catch (err) {
+      console.warn('Erro ao salvar alunos:', err);
+    }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'students' } }));
+    if (sync) syncToServer({ students });
   },
 
   addStudent(student: Student): void {
@@ -101,10 +119,15 @@ export const storageService = {
     }
   },
 
-  saveClasses(classes: VolleyballClass[]): void {
+  saveClasses(classes: VolleyballClass[], sync = true): void {
     if (!isClient) return;
-    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(classes));
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(classes));
+    } catch (err) {
+      console.warn('Erro ao salvar turmas:', err);
+    }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'classes' } }));
+    if (sync) syncToServer({ classes });
   },
 
   addClass(cls: VolleyballClass): void {
@@ -143,10 +166,15 @@ export const storageService = {
     }
   },
 
-  saveAttendanceSessions(sessions: DailyAttendanceSession[]): void {
+  saveAttendanceSessions(sessions: DailyAttendanceSession[], sync = true): void {
     if (!isClient) return;
-    localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(sessions));
+    try {
+      localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(sessions));
+    } catch (err) {
+      console.warn('Erro ao salvar chamadas:', err);
+    }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'attendance' } }));
+    if (sync) syncToServer({ sessions });
   },
 
   getSession(classId: string, date: string): DailyAttendanceSession | undefined {
@@ -335,10 +363,15 @@ export const storageService = {
     }
   },
 
-  saveNotifications(logs: NotificationLog[]): void {
+  saveNotifications(logs: NotificationLog[], sync = true): void {
     if (!isClient) return;
-    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(logs));
+    try {
+      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(logs));
+    } catch (err) {
+      console.warn('Erro ao salvar notificações:', err);
+    }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'notifications' } }));
+    if (sync) syncToServer({ notifications: logs });
   },
 
   addNotification(log: NotificationLog): void {
@@ -362,7 +395,7 @@ export const storageService = {
     }
   },
 
-  saveSponsors(sponsors: SponsorLogo[]): void {
+  saveSponsors(sponsors: SponsorLogo[], sync = true): void {
     if (!isClient) return;
     try {
       localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(sponsors));
@@ -370,17 +403,7 @@ export const storageService = {
       console.warn('Erro ao salvar patrocinadores no localStorage:', err);
     }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsors' } }));
-
-    // Sincroniza em segundo plano no servidor compartilhado
-    try {
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: { sponsors } }),
-      }).catch(() => {});
-    } catch {
-      // ignore
-    }
+    if (sync) syncToServer({ sponsors });
   },
 
   addSponsor(sponsor: SponsorLogo): void {
@@ -426,7 +449,7 @@ export const storageService = {
     }
   },
 
-  saveSponsorSize(size: number): void {
+  saveSponsorSize(size: number, sync = true): void {
     if (!isClient) return;
     const clamped = Math.max(14, Math.min(70, Math.round(size)));
     try {
@@ -435,17 +458,7 @@ export const storageService = {
       // ignore
     }
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsor_size', size: clamped } }));
-
-    // Sincroniza no servidor compartilhado
-    try {
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: { sponsorSize: clamped } }),
-      }).catch(() => {});
-    } catch {
-      // ignore
-    }
+    if (sync) syncToServer({ sponsorSize: clamped });
   },
 
   // --- ANALYTICS / CALCULATIONS ---
@@ -554,6 +567,59 @@ export const storageService = {
     } catch {
       return false;
     }
+  },
+
+  // Pull all synchronized data from the shared server (used by Mobile & other tabs)
+  async pullFromSharedSync(): Promise<boolean> {
+    if (!isClient) return false;
+    try {
+      const res = await fetch('/api/sync');
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (!json.data) return false;
+
+      let changed = false;
+      if (json.data.students && Array.isArray(json.data.students) && json.data.students.length > 0) {
+        this.saveStudents(json.data.students, false);
+        changed = true;
+      }
+      if (json.data.classes && Array.isArray(json.data.classes) && json.data.classes.length > 0) {
+        this.saveClasses(json.data.classes, false);
+        changed = true;
+      }
+      if (json.data.sessions && Array.isArray(json.data.sessions) && json.data.sessions.length > 0) {
+        this.saveAttendanceSessions(json.data.sessions, false);
+        changed = true;
+      }
+      if (json.data.notifications && Array.isArray(json.data.notifications) && json.data.notifications.length > 0) {
+        this.saveNotifications(json.data.notifications, false);
+        changed = true;
+      }
+      if (json.data.sponsors && Array.isArray(json.data.sponsors) && json.data.sponsors.length > 0) {
+        this.saveSponsors(json.data.sponsors, false);
+        changed = true;
+      }
+      if (typeof json.data.sponsorSize === 'number') {
+        this.saveSponsorSize(json.data.sponsorSize, false);
+        changed = true;
+      }
+      return changed;
+    } catch {
+      return false;
+    }
+  },
+
+  // Push all current local state to shared server
+  pushAllToSharedSync(): void {
+    if (!isClient) return;
+    syncToServer({
+      students: this.getStudents(),
+      classes: this.getClasses(),
+      sessions: this.getAttendanceSessions(),
+      notifications: this.getNotifications(),
+      sponsors: this.getSponsors(),
+      sponsorSize: this.getSponsorSize(),
+    });
   },
 
   // Subscribe to updates

@@ -96,12 +96,20 @@ export function VolleyballAcademyMain() {
     return () => unsubscribe();
   }, []);
 
-  // Sincronização automática entre servidor, PC e Celular na inicialização
+  // Sincronização bidirecional em tempo real entre PC e Celular
   useEffect(() => {
     async function initCrossDeviceSync() {
-      // 1. Pareia via servidor compartilhado ou QR Code de pareamento (?sync_url=...)
+      // 1. Tenta puxar alterações recentes do servidor compartilhado (ex: celular recebendo dados do PC)
       const synced = await syncServerAndDevices();
-      if (synced || isSupabaseConfigured()) {
+      if (synced) {
+        reloadData();
+      } else {
+        // Se este for o dispositivo com os dados principais, publica para o servidor
+        storageService.pushAllToSharedSync();
+      }
+
+      // 2. Se o Supabase estiver configurado, carrega da nuvem
+      if (isSupabaseConfigured()) {
         setIsCloudConnected(true);
         const res = await loadAllFromSupabase();
         if (res.success && res.hasData) {
@@ -115,7 +123,11 @@ export function VolleyballAcademyMain() {
 
   // Atualização em tempo real ao focar ou reabrir o app no celular
   useEffect(() => {
-    const handleDeviceFocus = () => {
+    const handleDeviceFocus = async () => {
+      const pulled = await storageService.pullFromSharedSync();
+      if (pulled) {
+        reloadData();
+      }
       if (isSupabaseConfigured()) {
         loadAllFromSupabase().then((res) => {
           if (res.success && res.hasData) {
@@ -132,6 +144,17 @@ export function VolleyballAcademyMain() {
     };
   }, []);
 
+  // Intervalo de verificação em segundo plano para manter celular e PC sincronizados ao vivo
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const pulled = await storageService.pullFromSharedSync();
+      if (pulled) {
+        reloadData();
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   // O Único Botão de Salvamento: Salva no Supabase e em todos os aparelhos
   const handleSaveData = async () => {
     if (!isSupabaseConfigured()) {
@@ -146,6 +169,7 @@ export function VolleyballAcademyMain() {
     storageService.saveClasses(classes);
     storageService.saveAttendanceSessions(sessions);
     storageService.saveNotifications(notifications);
+    storageService.pushAllToSharedSync();
 
     try {
       const res = await saveAllToSupabase();
