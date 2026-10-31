@@ -609,7 +609,7 @@ export const INITIAL_NOTIFICATIONS: NotificationLog[] = [
     guardianName: 'Juliana Rodrigues',
     guardianPhone: '(11) 99887-1122',
     type: 'Boas-Vindas Matrícula',
-    message: 'Bem-vindo(a) à Academia VôleiPro! Matrícula VOL-2026-003 confirmada para Enzo Rodrigues Souza na turma Iniciação Sub-9 / Sub-11 A. Dias: Seg/Qua/Sex às 08:00.',
+    message: 'Bem-vindo(a) à Academia VoleiAraça! Matrícula VOL-2026-003 confirmada para Enzo Rodrigues Souza na turma Iniciação Sub-9 / Sub-11 A. Dias: Seg/Qua/Sex às 08:00.',
     channel: 'WhatsApp',
     sentAt: '2026-10-20T11:00:00Z',
     status: 'Enviado',

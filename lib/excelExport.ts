@@ -52,7 +52,7 @@ export function exportStudentsToExcel(students: Student[], classes: VolleyballCl
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Alunos Cadastrados');
 
   const today = new Date().toISOString().split('T')[0];
-  downloadWorkbook(workbook, `VoleiPro_Alunos_Matriculados_${today}.xlsx`);
+  downloadWorkbook(workbook, `VoleiAraca_Alunos_Matriculados_${today}.xlsx`);
 }
 
 /**
@@ -140,7 +140,7 @@ export function exportMonthlyAttendanceReportToExcel(
   const legendSheet = XLSX.utils.json_to_sheet(legendRows);
   XLSX.utils.book_append_sheet(workbook, legendSheet, 'Legenda e Critérios');
 
-  downloadWorkbook(workbook, `VoleiPro_Relatorio_Assiduidade_${monthYear}.xlsx`);
+  downloadWorkbook(workbook, `VoleiAraca_Relatorio_Assiduidade_${monthYear}.xlsx`);
 }
 
 /**

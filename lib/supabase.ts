@@ -551,7 +551,7 @@ export async function loadAllFromSupabase(): Promise<{
  */
 export function getSupabaseMigrationSql(): string {
   return `-- =========================================================================
--- VÔLEIPRO - SISTEMA OFICIAL DE GESTÃO E PRESENÇA DA ACADEMIA DE VÔLEI
+-- VOLEIARAÇA - SISTEMA OFICIAL DE GESTÃO E PRESENÇA DA ACADEMIA DE VÔLEI
 -- Migration Inicial para Banco de Dados Relacional PostgreSQL (Supabase)
 -- =========================================================================
 
@@ -668,7 +668,7 @@ export function downloadSupabaseMigrationFile(): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', 'voleipro_supabase_migrations.sql');
+  link.setAttribute('download', 'voleiaraca_supabase_migrations.sql');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

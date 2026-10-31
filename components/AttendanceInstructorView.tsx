@@ -159,7 +159,7 @@ function AttendanceSessionBoard({
 
   const handleSendAbsenceAlert = (student: Student) => {
     const dateFormatted = selectedDate.split('-').reverse().join('/');
-    const message = `Olá ${student.guardian.name}! Informamos que o(a) aluno(a) ${student.fullName} registrou falta no treino de Vôlei hoje (${dateFormatted}) na turma ${selectedClass.name}. Caso haja justificativa ou atestado, por gentileza nos envie. Atenciosamente, ${selectedClass.instructorName} - VôleiPro.`;
+    const message = `Olá ${student.guardian.name}! Informamos que o(a) aluno(a) ${student.fullName} registrou falta no treino de Vôlei hoje (${dateFormatted}) na turma ${selectedClass.name}. Caso haja justificativa ou atestado, por gentileza nos envie. Atenciosamente, ${selectedClass.instructorName} - VoleiAraça.`;
 
     const notifLog: NotificationLog = {
       id: generateNotificationId(),
@@ -334,7 +334,7 @@ function AttendanceSessionBoard({
       </div>
 
       {/* Attendance Student List (Court Tactile Touch Cards) */}
-      <div className="space-y-2.5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {displayedStudents.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400 shadow-xs">
             Nenhum aluno encontrado para os critérios selecionados nesta turma.
@@ -547,7 +547,7 @@ export function AttendanceInstructorView({
   }
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto">
+    <div className="space-y-5 w-full">
       {/* Top Banner: Mobile Instructor Header in Clean Blue & White */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
         <div className="flex items-center justify-between gap-3 mb-4 pb-4 border-b border-slate-100 flex-wrap">

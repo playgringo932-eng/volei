@@ -34,7 +34,7 @@ export function DatabaseBackupModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `VoleiPro_Backup_DB_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `VoleiAraca_Backup_DB_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
     setStatusMsg({ type: 'success', text: 'Backup exportado com sucesso!' });

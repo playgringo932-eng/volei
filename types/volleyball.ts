@@ -109,3 +109,12 @@ export interface AttendanceSummary {
   consecutiveAbsences: number;
   isAtRisk: boolean; // attendanceRate < 75%
 }
+
+export interface SponsorLogo {
+  id: string;
+  name: string;
+  logoUrl: string;
+  isActive: boolean;
+  category?: string; // e.g. 'Patrocinador Master', 'Apoio Oficial', 'Material Esportivo'
+}
+

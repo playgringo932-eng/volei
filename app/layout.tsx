@@ -9,16 +9,16 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'VôleiPro - Sistema Oficial de Gestão e Presença da Academia de Vôlei',
+  title: 'VoleiAraça - Sistema Oficial de Gestão e Presença da Academia de Vôlei',
   description: 'Gestão profissional de turmas de vôlei (07 a 17 anos), controle de frequência em tempo real para instrutores, relatórios mensais, exportação Excel e avisos aos responsáveis.',
   openGraph: {
-    title: 'VôleiPro - Sistema Oficial de Gestão e Presença da Academia de Vôlei',
+    title: 'VoleiAraça - Sistema Oficial de Gestão e Presença da Academia de Vôlei',
     description: 'Gestão profissional de turmas de vôlei (07 a 17 anos), controle de frequência em tempo real para instrutores, relatórios mensais, exportação Excel e avisos aos responsáveis.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VôleiPro - Sistema Oficial de Gestão e Presença da Academia de Vôlei',
+    title: 'VoleiAraça - Sistema Oficial de Gestão e Presença da Academia de Vôlei',
     description: 'Gestão profissional de turmas de vôlei (07 a 17 anos), controle de frequência em tempo real para instrutores, relatórios mensais, exportação Excel e avisos aos responsáveis.',
   },
 };

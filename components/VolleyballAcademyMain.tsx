@@ -183,7 +183,7 @@ export function VolleyballAcademyMain() {
         guardianPhone: savedStudent.guardian.phone,
         guardianEmail: savedStudent.guardian.email,
         type: 'Boas-Vindas Matrícula',
-        message: `Bem-vindo(a) à Academia VôleiPro! Matrícula ${savedStudent.registrationNumber} confirmada para ${savedStudent.fullName} (Categoria ${savedStudent.category}). Estamos ansiosos pelos treinos!`,
+        message: `Bem-vindo(a) à Academia VoleiAraça! Matrícula ${savedStudent.registrationNumber} confirmada para ${savedStudent.fullName} (Categoria ${savedStudent.category}). Estamos ansiosos pelos treinos!`,
         channel: 'WhatsApp',
         sentAt: new Date().toISOString(),
         status: 'Enviado',
@@ -312,7 +312,7 @@ export function VolleyballAcademyMain() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
         {/* Tab 1: Alunos & Matrículas */}
         {currentTab === 'admin' && (
           <StudentsManagement
@@ -377,9 +377,9 @@ export function VolleyballAcademyMain() {
 
       {/* Footer */}
       <footer className="mt-auto border-t-2 border-blue-200/80 bg-white py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            <strong className="text-blue-900 font-bold">VôleiPro</strong> — Sistema Oficial de Gestão de Vôlei Juvenil (Faixa Etária: 07 a 17 anos)
+            <strong className="text-blue-900 font-bold">VoleiAraça</strong> — Sistema Oficial de Gestão de Vôlei Juvenil (Faixa Etária: 07 a 17 anos)
           </div>
           <div className="flex items-center gap-4 text-slate-600 font-medium">
             <span>Matrículas & Frequência</span>

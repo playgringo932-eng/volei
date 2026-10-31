@@ -7,6 +7,7 @@ import {
   NotificationLog,
   AttendanceSummary,
   AttendanceStatus,
+  SponsorLogo,
 } from '@/types/volleyball';
 import {
   INITIAL_CLASSES,
@@ -14,12 +15,15 @@ import {
   generateInitialAttendanceSessions,
   INITIAL_NOTIFICATIONS,
 } from './mockData';
+import { DEFAULT_SPONSORS } from './sponsorPresets';
 
 const STORAGE_KEYS = {
   STUDENTS: 'voleipro_students_v1',
   CLASSES: 'voleipro_classes_v1',
   ATTENDANCE: 'voleipro_attendance_v1',
   NOTIFICATIONS: 'voleipro_notifications_v1',
+  SPONSORS: 'voleiaraca_sponsors_v1',
+  SPONSOR_SIZE: 'voleiaraca_sponsor_size_v1',
 };
 
 const SYNC_EVENT = 'voleipro_data_updated';
@@ -264,7 +268,7 @@ export const storageService = {
         startTime: '08:00',
         endTime: '09:30',
         daysOfWeek: ['Segunda', 'Quarta', 'Sexta'],
-        instructorName: 'Coordenação VôleiPro',
+        instructorName: 'Coordenação VoleiAraça',
         court: 'Quadra Central',
         maxCapacity: 30,
         enrolledCount: 1,
@@ -341,6 +345,77 @@ export const storageService = {
     const list = this.getNotifications();
     list.unshift(log);
     this.saveNotifications(list);
+  },
+
+  // --- SPONSORS (PATROCINADORES DA CARTEIRINHA) ---
+  getSponsors(): SponsorLogo[] {
+    if (!isClient) return DEFAULT_SPONSORS;
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.SPONSORS);
+      if (!data) {
+        localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(DEFAULT_SPONSORS));
+        return DEFAULT_SPONSORS;
+      }
+      return JSON.parse(data);
+    } catch {
+      return DEFAULT_SPONSORS;
+    }
+  },
+
+  saveSponsors(sponsors: SponsorLogo[]): void {
+    if (!isClient) return;
+    localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(sponsors));
+    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsors' } }));
+  },
+
+  addSponsor(sponsor: SponsorLogo): void {
+    const list = this.getSponsors();
+    list.push(sponsor);
+    this.saveSponsors(list);
+  },
+
+  updateSponsor(sponsor: SponsorLogo): void {
+    const list = this.getSponsors();
+    const idx = list.findIndex((s) => s.id === sponsor.id);
+    if (idx !== -1) {
+      list[idx] = sponsor;
+      this.saveSponsors(list);
+    }
+  },
+
+  toggleSponsor(id: string): void {
+    const list = this.getSponsors();
+    const target = list.find((s) => s.id === id);
+    if (target) {
+      target.isActive = !target.isActive;
+      this.saveSponsors(list);
+    }
+  },
+
+  deleteSponsor(id: string): void {
+    const list = this.getSponsors().filter((s) => s.id !== id);
+    this.saveSponsors(list);
+  },
+
+  getSponsorSize(): number {
+    if (!isClient) return 26;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SPONSOR_SIZE);
+      if (saved) {
+        const num = parseInt(saved, 10);
+        if (!isNaN(num) && num >= 14 && num <= 70) return num;
+      }
+      return 26;
+    } catch {
+      return 26;
+    }
+  },
+
+  saveSponsorSize(size: number): void {
+    if (!isClient) return;
+    const clamped = Math.max(14, Math.min(70, Math.round(size)));
+    localStorage.setItem(STORAGE_KEYS.SPONSOR_SIZE, clamped.toString());
+    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsor_size', size: clamped } }));
   },
 
   // --- ANALYTICS / CALCULATIONS ---

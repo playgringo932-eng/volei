@@ -19,32 +19,27 @@ import {
   User,
   QrCode,
   Trash2,
+  Building2,
+  Plus,
+  Sliders,
 } from 'lucide-react';
-import { Student, VolleyballClass } from '@/types/volleyball';
+import { Student, VolleyballClass, SponsorLogo } from '@/types/volleyball';
 import { getAthletePhoto, readFileAsBase64 } from '@/lib/avatarHelpers';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
+import { storageService } from '@/lib/storage';
+import { SponsorsManagerModal } from '@/components/SponsorsManagerModal';
 
 /**
- * Builds rich, fully synchronized JSON QR payload containing
- * all live student details matching the database and carteirinha.
+ * Builds compact, high-readability JSON QR payload.
+ * Keeping the payload clean (~65 characters) produces a low-density QR code matrix (25x25)
+ * with large individual modules, allowing cameras to scan it instantly from any distance.
  */
-export function getStudentQrPayload(st: Student, cls?: VolleyballClass): string {
+export function getStudentQrPayload(st: Student, _cls?: VolleyballClass): string {
   return JSON.stringify({
-    app: 'VOLEIPRO',
+    app: 'VOLEIARAÇA',
     id: st.id,
     matricula: st.registrationNumber,
     nome: st.fullName,
-    idade: st.age,
-    categoria: st.category,
-    turma: cls?.name || 'Turma Geral',
-    turno: cls?.shift || 'Geral',
-    horario: cls ? `${cls.startTime} às ${cls.endTime}` : '08:00 às 09:30',
-    posicao: st.preferredPosition,
-    camisa: st.jerseyNumber || null,
-    responsavel: st.guardian.name,
-    contato: st.guardian.phone,
-    status: st.status,
-    validade: '2026-12-31',
   });
 }
 
@@ -77,7 +72,30 @@ export function StudentIdCardModal({
   const [copiedNotice, setCopiedNotice] = useState(false);
   const [showBigQr, setShowBigQr] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isSponsorsModalOpen, setIsSponsorsModalOpen] = useState(false);
+  const [sponsorsList, setSponsorsList] = useState<SponsorLogo[]>(() => storageService.getSponsors());
+  const [sponsorSize, setSponsorSize] = useState<number>(() => storageService.getSponsorSize());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const activeSponsors = sponsorsList.filter((s) => s.isActive);
+  const handleSponsorsUpdate = () => {
+    setSponsorsList(storageService.getSponsors());
+    setSponsorSize(storageService.getSponsorSize());
+  };
+
+  const handleQuickSizeChange = (newSize: number) => {
+    setSponsorSize(newSize);
+    storageService.saveSponsorSize(newSize);
+  };
+
+  // Sync sponsors and size with global storage updates
+  React.useEffect(() => {
+    const unsubscribe = storageService.subscribe(() => {
+      setSponsorsList(storageService.getSponsors());
+      setSponsorSize(storageService.getSponsorSize());
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Sync when prop changes without useEffect cascading render
   if (student && student.id !== prevStudentPropId) {
@@ -178,7 +196,7 @@ export function StudentIdCardModal({
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-blue-800 transition-colors"
+              className="p-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-blue-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -232,15 +250,51 @@ export function StudentIdCardModal({
             </div>
           )}
 
-          {/* Quick Photo Upload, Edit & Delete Actions (Hidden in print) */}
+          {/* Quick Photo Upload, Edit & Sponsor Controls Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 p-3.5 rounded-2xl print:hidden shadow-xs">
             <div className="flex items-center gap-2 text-xs text-slate-800">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-extrabold text-blue-900">QR Code Ativo:</span>
-              <span>Dados 100% sincronizados com o cadastro oficial da academia.</span>
+              <span className="font-extrabold text-blue-900">QR Code Oficial:</span>
+              <span>Dados sincronizados ao vivo.</span>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Seletor de Tamanho dos Patrocínios no Verso */}
+              <div className="flex items-center gap-1 bg-white border border-blue-200 rounded-xl p-1 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 px-1 flex items-center gap-1">
+                  <Sliders className="w-3 h-3 text-blue-600" />
+                  <span>Tam. Patrocínio:</span>
+                </span>
+                {[
+                  { label: 'P', size: 20 },
+                  { label: 'M', size: 28 },
+                  { label: 'G', size: 36 },
+                  { label: 'GG', size: 48 },
+                ].map((s) => (
+                  <button
+                    key={s.label}
+                    onClick={() => handleQuickSizeChange(s.size)}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      sponsorSize === s.size
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                    title={`Definir altura dos logos no verso em ${s.size}px`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setIsSponsorsModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold text-xs shadow-2xs transition-colors cursor-pointer"
+                title="Gerenciar logos de patrocinadores no verso"
+              >
+                <Building2 className="w-3.5 h-3.5 text-blue-700" />
+                <span>Patrocinadores ({activeSponsors.length})</span>
+              </button>
+
               <button
                 onClick={() => setShowBigQr(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-xs transition-colors"
@@ -305,8 +359,11 @@ export function StudentIdCardModal({
 
               return (
                 <div key={st.id} className="page-break-inside-avoid">
-                  {/* Outer Demarcated Cut Frame */}
-                  <div className="p-4 sm:p-6 bg-slate-50/60 rounded-3xl border-2 border-dashed border-blue-400 max-w-3xl mx-auto shadow-sm relative">
+                  {/* Outer Demarcated Cut Frame with DOM ID for Export */}
+                  <div
+                    id={`id-card-frame-${st.id}`}
+                    className="p-4 sm:p-6 bg-slate-50/60 rounded-3xl border-2 border-dashed border-blue-400 max-w-3xl mx-auto shadow-sm relative"
+                  >
                     {/* Demarcation label */}
                     <div className="absolute -top-3 left-6 px-3 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider print:hidden">
                       Linha de Corte da Carteirinha #{idx + 1}
@@ -314,29 +371,27 @@ export function StudentIdCardModal({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
                       {/* ================= FRENTE DA CARTEIRINHA ================= */}
-                      <div className="bg-white rounded-2xl border-2 border-blue-800 shadow-md overflow-hidden flex flex-col justify-between relative min-h-[340px]">
-                        {/* Court Watermark Demarcation Line Pattern (Linhas de Fundo, Laterais, Ataque 3m e Central) */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.06] p-2" viewBox="0 0 200 300" preserveAspectRatio="none">
+                      <div
+                        id={`id-card-front-${st.id}`}
+                        className="bg-white rounded-2xl border-2 border-blue-800 shadow-md overflow-hidden flex flex-col justify-between relative min-h-[350px]"
+                      >
+                        {/* Court Watermark */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.05] p-2" viewBox="0 0 200 300" preserveAspectRatio="none">
                           <rect x="8" y="8" width="184" height="284" fill="none" stroke="#1E40AF" strokeWidth="3" />
-                          {/* Attack Lines 3m */}
                           <line x1="8" y1="100" x2="192" y2="100" stroke="#1E40AF" strokeWidth="2.5" />
                           <line x1="8" y1="200" x2="192" y2="200" stroke="#1E40AF" strokeWidth="2.5" />
-                          {/* Center Net Line (Demarcated with double line) */}
                           <line x1="8" y1="150" x2="192" y2="150" stroke="#1E40AF" strokeWidth="4" />
-                          {/* Service Marks */}
-                          <line x1="8" y1="286" x2="8" y2="292" stroke="#1E40AF" strokeWidth="2" />
-                          <line x1="192" y1="286" x2="192" y2="292" stroke="#1E40AF" strokeWidth="2" />
                         </svg>
 
-                        {/* Card Header */}
+                        {/* Header Frente */}
                         <div className="bg-gradient-to-r from-blue-800 to-blue-700 text-white p-3.5 border-b-2 border-blue-900 relative z-10 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg bg-white text-blue-800 flex items-center justify-center font-black text-sm">
-                              VP
+                              VA
                             </div>
                             <div>
                               <div className="text-[11px] font-extrabold tracking-wider uppercase leading-tight">
-                                Academia VôleiPro
+                                Academia VoleiAraça
                               </div>
                               <div className="text-[9px] text-blue-200 uppercase font-semibold">
                                 Federação de Voleibol Juvenil
@@ -348,12 +403,12 @@ export function StudentIdCardModal({
                           </span>
                         </div>
 
-                        {/* Card Body Front */}
-                        <div className="p-4 relative z-10 flex-1 flex flex-col justify-between space-y-3">
-                          <div className="flex gap-3.5 items-start">
-                            {/* Photo Box with Demarcation Line */}
+                        {/* Corpo da Frente: APENAS Foto Ampliada, Nome, Idade, Atleta Inscrito, Matrícula e QR Code Ampliado */}
+                        <div className="p-4 relative z-10 flex-1 flex flex-col justify-between space-y-3.5">
+                          <div className="flex gap-4 items-center">
+                            {/* Foto de Perfil Ampliada para ocupar o espaço em branco */}
                             <div className="relative shrink-0">
-                              <div className="w-24 h-28 rounded-xl border-2 border-blue-700 overflow-hidden bg-blue-50 shadow-xs flex items-center justify-center">
+                              <div className="w-28 h-34 sm:w-32 sm:h-38 rounded-2xl border-2 border-blue-700 overflow-hidden bg-blue-50 shadow-md flex items-center justify-center">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={photo}
@@ -362,210 +417,174 @@ export function StudentIdCardModal({
                                 />
                               </div>
                               {st.jerseyNumber && (
-                                <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-blue-700 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
+                                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-blue-700 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-sm">
                                   #{st.jerseyNumber}
                                 </div>
                               )}
                             </div>
 
-                            {/* Athlete Details */}
-                            <div className="flex-1 min-w-0 space-y-1">
-                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">
+                            {/* Informações: Atleta Inscrito, Nome, Idade e Matrícula */}
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block">
                                 Atleta Inscrito
                               </span>
-                              <h3 className="font-extrabold text-slate-900 text-sm leading-tight truncate">
+                              <h3 className="font-black text-slate-900 text-base sm:text-lg leading-snug">
                                 {st.fullName}
                               </h3>
 
-                              <div className="text-[11px] text-slate-700 pt-1 space-y-0.5 font-medium">
-                                <div>
-                                  <span className="text-slate-500">Idade:</span>{' '}
-                                  <strong className="text-slate-900">{st.age} anos</strong> (07 a 17)
-                                </div>
-                                <div>
-                                  <span className="text-slate-500">Posição:</span>{' '}
-                                  <strong className="text-blue-800">{st.preferredPosition}</strong>
-                                </div>
-                                <div>
-                                  <span className="text-slate-500">Nível:</span> {st.level}
-                                </div>
+                              <div className="text-xs sm:text-sm text-slate-700 font-medium">
+                                <span className="text-slate-500">Idade:</span>{' '}
+                                <strong className="text-slate-900 font-bold">{st.age} anos</strong>
+                              </div>
+
+                              <div className="pt-0.5">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+                                  Matrícula Oficial:
+                                </span>
+                                <span className="font-mono text-xs sm:text-sm font-black text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block shadow-2xs">
+                                  {st.registrationNumber}
+                                </span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Turma & Turno Strip */}
-                          <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-2 text-[10px] space-y-0.5 text-slate-700">
-                            <div className="flex justify-between">
-                              <span className="text-slate-500 font-semibold">Turma:</span>
-                              <strong className="text-blue-900 truncate max-w-[170px]">{cls?.name || 'Vôlei Geral'}</strong>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500 font-semibold">Turno & Horário:</span>
-                              <span className="font-bold text-slate-800">
-                                {cls?.shift} ({cls?.startTime} às {cls?.endTime})
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* QR Code, Barcode & Registration Footer */}
-                        <div className="bg-slate-50 border-t-2 border-slate-200 p-2.5 px-3 flex items-center justify-between relative z-10 gap-2.5">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-                                Matrícula:
-                              </span>
-                              <span className="font-mono text-xs font-black text-blue-900 bg-blue-100 px-1.5 py-0.2 rounded border border-blue-200">
-                                {st.registrationNumber}
-                              </span>
-                            </div>
-                            {/* Barcode representation */}
-                            <div className="flex items-center gap-[2px] h-3.5 my-1">
-                              <span className="w-[2px] h-full bg-slate-900"></span>
-                              <span className="w-[1px] h-full bg-slate-900"></span>
-                              <span className="w-[3px] h-full bg-slate-900"></span>
-                              <span className="w-[1px] h-full bg-slate-900"></span>
-                              <span className="w-[2px] h-full bg-slate-900"></span>
-                              <span className="w-[4px] h-full bg-slate-900"></span>
-                              <span className="w-[1px] h-full bg-slate-900"></span>
-                              <span className="w-[2px] h-full bg-slate-900"></span>
-                              <span className="w-[1px] h-full bg-slate-900"></span>
-                              <span className="w-[3px] h-full bg-slate-900"></span>
-                            </div>
-                            <span className="text-[8px] text-slate-400 font-mono block">CARTEIRINHA DIGITAL VÔLEIPRO</span>
-                          </div>
-
-                          {/* Interactive Scannable QR Code - 100% Sincronizado */}
+                          {/* QR CODE GIGANTE PARA LEITURA DIRETA E INSTANTÂNEA */}
                           <div
                             onClick={() => setShowBigQr(true)}
-                            className="shrink-0 flex items-center gap-2 bg-white border-2 border-blue-600 hover:border-blue-700 rounded-xl p-1.5 shadow-xs cursor-pointer transition-transform hover:scale-105"
-                            title="Clique para ampliar este QR Code e ver os dados sincronizados"
+                            className="bg-blue-50/90 hover:bg-blue-100/80 border-2 border-blue-600 rounded-2xl p-3 flex flex-col items-center justify-center shadow-xs cursor-pointer transition-all hover:scale-[1.01]"
+                            title="QR Code Oficial — Clique para ver ampliado"
                           >
-                            <QRCodeDisplay
-                              value={getStudentQrPayload(st, cls)}
-                              size={82}
-                              altText={`QR Code Oficial Sincronizado - ${st.fullName}`}
-                            />
-                            <div className="flex flex-col text-[8px] font-black text-blue-900 leading-tight">
-                              <span className="text-[12px] text-blue-700">📷</span>
-                              <span>QR CODE</span>
-                              <span className="text-emerald-700">SINCRONIZADO</span>
-                              <span className="text-[7px] text-blue-500 font-bold underline">Ampliar</span>
+                            <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wider mb-2">
+                              <QrCode className="w-4 h-4 text-blue-700" />
+                              <span>QR Code Oficial</span>
                             </div>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* ================= VERSO DA CARTEIRINHA ================= */}
-                      <div className="bg-white rounded-2xl border-2 border-slate-300 shadow-md overflow-hidden flex flex-col justify-between relative min-h-[340px]">
-                        {/* Court Watermark Demarcation Line Pattern */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.04] p-2" viewBox="0 0 200 300" preserveAspectRatio="none">
-                          <rect x="8" y="8" width="184" height="284" fill="none" stroke="#0F172A" strokeWidth="3" />
-                          <line x1="8" y1="100" x2="192" y2="100" stroke="#0F172A" strokeWidth="2" />
-                          <line x1="8" y1="200" x2="192" y2="200" stroke="#0F172A" strokeWidth="2" />
-                          <line x1="8" y1="150" x2="192" y2="150" stroke="#0F172A" strokeWidth="3" />
-                        </svg>
-
-                        {/* Header Verso */}
-                        <div className="bg-slate-100 p-3 border-b border-slate-200 flex items-center justify-between text-xs relative z-10">
-                          <span className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
-                            Informações Legais & Emergência
-                          </span>
-                          <span className="text-[10px] font-semibold text-slate-500">
-                            Verso do Documento
-                          </span>
-                        </div>
-
-                        {/* Body Verso */}
-                        <div className="p-4 space-y-3 text-[11px] text-slate-700 flex-1">
-                          {/* Guardian / Responsável */}
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
-                            <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                              <User className="w-3 h-3 text-blue-700" />
-                              <span>Responsável Legal:</span>
-                            </div>
-                            <div className="font-bold text-slate-900 text-xs">
-                              {st.guardian.name} ({st.guardian.relationship})
-                            </div>
-                            <div className="flex items-center gap-1.5 font-mono text-blue-800 font-semibold pt-0.5">
-                              <Phone className="w-3 h-3 text-emerald-600" />
-                              <span>{st.guardian.phone}</span>
-                            </div>
-                            {st.guardian.emergencyPhone && (
-                              <div className="text-[10px] text-slate-600 font-mono">
-                                Emergência 2: {st.guardian.emergencyPhone}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Health & Medical */}
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
-                            <div className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                              <HeartPulse className="w-3 h-3 text-rose-600" />
-                              <span>Observações Médicas & Alergias:</span>
-                            </div>
-                            <div className="text-slate-800 text-[10px] leading-tight">
-                              {st.allergies || st.medicalConditions ? (
-                                <>
-                                  {st.allergies && <span>Alergias: {st.allergies}. </span>}
-                                  {st.medicalConditions && <span>Condições: {st.medicalConditions}</span>}
-                                </>
-                              ) : (
-                                <span className="text-slate-500">Nenhuma restrição médica declarada.</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* QR Code Presença Automática Verso - Grandioso e Destacado */}
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-2.5 rounded-2xl border-2 border-blue-400 flex items-center gap-3 shadow-2xs">
-                            <div
-                              onClick={() => setShowBigQr(true)}
-                              className="shrink-0 bg-white p-1 rounded-xl border-2 border-blue-600 shadow-xs cursor-pointer hover:scale-105 transition-transform"
-                              title="Clique para ampliar este QR Code"
-                            >
+                            <div className="bg-white p-2.5 rounded-2xl border-2 border-blue-700 shadow-sm flex items-center justify-center">
                               <QRCodeDisplay
                                 value={getStudentQrPayload(st, cls)}
-                                size={78}
+                                size={200}
                                 altText={`QR Code Oficial Sincronizado - ${st.fullName}`}
                               />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase">
-                                <QrCode className="w-4 h-4 text-blue-700" />
-                                <span>QR Code Oficial de Presença</span>
-                              </div>
-                              <p className="text-[10px] text-slate-700 leading-tight pt-1">
-                                Aproxime da câmera ou do leitor do instrutor na entrada da quadra para marcar presença automática.
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-[9px] font-mono font-bold text-blue-800 bg-white px-2 py-0.5 rounded border border-blue-300 shadow-2xs">
-                                  {st.registrationNumber}
-                                </span>
-                                <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                  ✓ Check-in Automático
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Normativa */}
-                          <div className="text-[9px] text-slate-500 leading-tight">
-                            Este documento é de uso pessoal e intransferível. Válido mediante apresentação nas aulas, treinos, chamadas com instrutor e torneios oficiais da modalidade.
                           </div>
                         </div>
 
-                        {/* Footer Verso: Validade e Assinatura */}
-                        <div className="bg-slate-50 border-t border-slate-200 p-3 flex items-center justify-between text-[10px]">
-                          <div>
-                            <span className="text-slate-500 block text-[9px] uppercase font-semibold">Validade da Carteirinha:</span>
-                            <strong className="text-blue-900 font-bold">31 / DEZEMBRO / 2026</strong>
-                          </div>
+                        {/* Rodapé da Frente */}
+                        <div className="bg-slate-50 border-t border-slate-200 px-3 py-1.5 flex items-center justify-between text-[9px] text-slate-500 relative z-10">
+                          <span>Identificação Oficial do Atleta</span>
+                          <span className="font-mono font-bold text-blue-900">{st.registrationNumber}</span>
+                        </div>
+                      </div>
 
+                      {/* ================= VERSO DA CARTEIRINHA (TOTALMENTE AZUL & EXCLUSIVO PARA PATROCÍNIOS) ================= */}
+                      <div
+                        id={`id-card-back-${st.id}`}
+                        className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-950 rounded-2xl border-2 border-blue-900 shadow-md overflow-hidden flex flex-col justify-between relative min-h-[350px] text-white"
+                      >
+                        {/* Court Watermark in translucent white */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.08] p-2" viewBox="0 0 200 300" preserveAspectRatio="none">
+                          <rect x="8" y="8" width="184" height="284" fill="none" stroke="#FFFFFF" strokeWidth="3" />
+                          <line x1="8" y1="100" x2="192" y2="100" stroke="#FFFFFF" strokeWidth="2.5" />
+                          <line x1="8" y1="200" x2="192" y2="200" stroke="#FFFFFF" strokeWidth="2.5" />
+                          <line x1="8" y1="150" x2="192" y2="150" stroke="#FFFFFF" strokeWidth="4" />
+                          <circle cx="100" cy="150" r="30" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                        </svg>
+
+                        {/* Header Verso Azul */}
+                        <div className="bg-blue-950/60 p-3.5 border-b border-blue-500/30 flex items-center justify-between relative z-10 backdrop-blur-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-white text-blue-800 flex items-center justify-center font-black text-sm shadow-xs">
+                              VA
+                            </div>
+                            <div>
+                              <div className="text-[11px] font-black tracking-wider uppercase leading-tight text-white">
+                                Academia VoleiAraça
+                              </div>
+                              <div className="text-[9px] text-blue-200 uppercase font-bold tracking-wider">
+                                Patrocinadores & Apoiadores Oficiais
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-600/60 text-blue-100 rounded border border-blue-400/40">
+                            Apoio Esportivo
+                          </span>
+                        </div>
+
+                        {/* Corpo do Verso: DEDICADO EXCLUSIVAMENTE AOS PATROCÍNIOS */}
+                        <div className="p-4 relative z-10 flex-1 flex flex-col justify-center space-y-2.5">
+                          {activeSponsors.length > 0 ? (
+                            <div
+                              onClick={() => setIsSponsorsModalOpen(true)}
+                              className="space-y-2 cursor-pointer group"
+                              title="Clique para gerenciar ou adicionar patrocinadores"
+                            >
+                              <div className="grid grid-cols-1 gap-2">
+                                {activeSponsors.map((sp) => (
+                                  <div
+                                    key={sp.id}
+                                    className="bg-white/95 hover:bg-white text-slate-900 rounded-xl p-2.5 shadow-sm border border-white/40 flex items-center justify-between gap-3 transition-transform group-hover:scale-[1.01]"
+                                  >
+                                    <div
+                                      style={{ height: `${sponsorSize}px` }}
+                                      className="w-28 flex items-center justify-center p-0.5 bg-slate-50 rounded-lg shrink-0 overflow-hidden border border-slate-200"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={sp.logoUrl}
+                                        alt={sp.name}
+                                        className="max-h-full max-w-full object-contain"
+                                      />
+                                    </div>
+                                    <div className="flex-1 min-w-0 text-right">
+                                      <div className="font-extrabold text-xs text-slate-900 truncate">
+                                        {sp.name}
+                                      </div>
+                                      <div className="text-[10px] font-semibold text-blue-800 truncate">
+                                        {sp.category || 'Patrocinador Oficial'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="text-center pt-1 print:hidden">
+                                <span className="text-[8px] text-blue-200 hover:text-white underline font-bold uppercase tracking-wider">
+                                  Gerenciar Logos & Tamanho ({sponsorSize}px)
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => setIsSponsorsModalOpen(true)}
+                              className="p-6 rounded-2xl border-2 border-dashed border-blue-300/40 hover:border-white bg-blue-900/30 text-center cursor-pointer transition-colors space-y-2 group"
+                            >
+                              <Building2 className="w-8 h-8 text-blue-200 mx-auto group-hover:scale-110 transition-transform" />
+                              <div className="text-xs font-bold text-white">
+                                Nenhum patrocinador ativo no momento
+                              </div>
+                              <p className="text-[10px] text-blue-200">
+                                Clique para adicionar logos de empresas e apoiadores oficiais no verso desta carteirinha.
+                              </p>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 rounded-xl bg-white text-blue-900 font-bold text-xs shadow-xs hover:bg-blue-50 transition-colors inline-flex items-center gap-1.5"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>+ Adicionar Patrocinador</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Rodapé Verso Azul */}
+                        <div className="bg-blue-950/80 p-3 px-4 border-t border-blue-500/30 flex items-center justify-between text-[9px] relative z-10 text-blue-200">
+                          <div>
+                            <span className="font-bold text-white">Incentivo ao Voleibol Juvenil</span>
+                            <span className="block text-[8px] text-blue-300">Faixa Etária Oficial: 07 a 17 Anos</span>
+                          </div>
                           <div className="text-right">
-                            <div className="border-b border-slate-400 w-28 mx-auto mb-0.5"></div>
-                            <span className="text-[8px] text-slate-500 uppercase font-semibold">
-                              Coordenação VôleiPro
-                            </span>
+                            <span className="font-bold text-white block">Coordenação VoleiAraça</span>
+                            <span className="text-[8px] text-blue-300">Temporada 2026</span>
                           </div>
                         </div>
                       </div>
@@ -698,6 +717,13 @@ export function StudentIdCardModal({
           </div>
         </div>
       )}
+
+      {/* Modal: Gerenciador de Patrocinadores da Carteirinha */}
+      <SponsorsManagerModal
+        isOpen={isSponsorsModalOpen}
+        onClose={() => setIsSponsorsModalOpen(false)}
+        onSponsorsChange={handleSponsorsUpdate}
+      />
     </div>
   );
 }

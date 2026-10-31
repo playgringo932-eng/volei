@@ -111,7 +111,7 @@ export function StudentsManagement({
   };
 
   const handleWhatsApp = (student: Student) => {
-    const text = `Olá ${student.guardian.name}, tudo bem? Aqui é da coordenação da Academia VôleiPro sobre as aulas de vôlei do(a) ${student.fullName}.`;
+    const text = `Olá ${student.guardian.name}, tudo bem? Aqui é da coordenação da Academia VoleiAraça sobre as aulas de vôlei do(a) ${student.fullName}.`;
     const url = createWhatsAppLink(student.guardian.phone, text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -132,7 +132,7 @@ export function StudentsManagement({
         {/* Court line watermark */}
         <div className="absolute -right-8 -bottom-8 w-48 h-48 border-4 border-white/10 rounded-full pointer-events-none"></div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1.5 max-w-xl">
+          <div className="space-y-1.5 max-w-3xl flex-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/80 border border-blue-400 text-xs font-bold text-blue-100">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>Controle de Presença & Chamada Automática</span>
@@ -172,7 +172,7 @@ export function StudentsManagement({
       <div className="bg-white border-2 border-blue-600/20 rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between mb-4">
           {/* Search box */}
-          <div className="relative flex-1 max-w-lg">
+          <div className="relative flex-1 min-w-[280px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
@@ -563,7 +563,7 @@ export function StudentsManagement({
         </div>
       ) : (
         /* Cards View with Demarcation Lines */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           {filteredStudents.map((student) => {
             const cls = classMap.get(student.classId);
             const summary = storageService.getStudentAttendanceSummary(student.id, '2026-10');
@@ -643,7 +643,7 @@ export function StudentsManagement({
                 >
                   <div className="flex items-center gap-2">
                     <QRCodeDisplay
-                      value={`VOLEIPRO:${student.id}:${student.registrationNumber}`}
+                      value={`VOLEIARAÇA:${student.id}:${student.registrationNumber}`}
                       size={38}
                     />
                     <div>

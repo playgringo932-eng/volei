@@ -55,7 +55,7 @@ export function StudentDetailsModal({
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const handleWhatsAppClick = () => {
-    const text = `Olá ${student.guardian.name}, tudo bem? Aqui é da coordenação da Academia VôleiPro sobre o(a) atleta ${student.fullName}.`;
+    const text = `Olá ${student.guardian.name}, tudo bem? Aqui é da coordenação da Academia VoleiAraça sobre o(a) atleta ${student.fullName}.`;
     const url = createWhatsAppLink(student.guardian.phone, text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };

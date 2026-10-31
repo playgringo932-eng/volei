@@ -136,7 +136,7 @@ export function NotificationsCenter({
     if (todayAbsentStudents.length === 0) return;
 
     todayAbsentStudents.forEach(({ student, cls }) => {
-      const msg = `Olá ${student.guardian.name}! Comunicado da Academia VôleiPro: o aluno(a) ${student.fullName} teve falta registrada no treino de hoje (${todayStr.split('-').reverse().join('/')}) na turma ${cls?.name || 'de Vôlei'}. Por favor, nos avise se houver justificativa.`;
+      const msg = `Olá ${student.guardian.name}! Comunicado da Academia VoleiAraça: o aluno(a) ${student.fullName} teve falta registrada no treino de hoje (${todayStr.split('-').reverse().join('/')}) na turma ${cls?.name || 'de Vôlei'}. Por favor, nos avise se houver justificativa.`;
       
       const log: NotificationLog = {
         id: generateNotificationId(),
@@ -258,9 +258,9 @@ export function NotificationsCenter({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {todayAbsentStudents.map(({ student, cls }) => {
-                const message = `Olá ${student.guardian.name}! Comunicado da Academia VôleiPro: informamos que o(a) aluno(a) ${student.fullName} registrou falta no treino hoje (${todayStr.split('-').reverse().join('/')}) na turma ${cls?.name}. Contamos com seu apoio para justificar a ausência.`;
+                const message = `Olá ${student.guardian.name}! Comunicado da Academia VoleiAraça: informamos que o(a) aluno(a) ${student.fullName} registrou falta no treino hoje (${todayStr.split('-').reverse().join('/')}) na turma ${cls?.name}. Contamos com seu apoio para justificar a ausência.`;
 
                 return (
                   <div
@@ -320,7 +320,7 @@ export function NotificationsCenter({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {lowAttendanceStudents.map(({ student, cls, summary }) => {
-              const alertMessage = `Prezado(a) ${student.guardian.name}, a coordenação pedagógica da Academia VôleiPro gostaria de conversar sobre a assiduidade do(a) aluno(a) ${student.fullName}. Ele(a) está atualmente com ${summary.attendanceRate}% de frequência (${summary.absentCount} faltas no mês), abaixo do mínimo de 75% exigido. Estamos à disposição para apoiar!`;
+              const alertMessage = `Prezado(a) ${student.guardian.name}, a coordenação pedagógica da Academia VoleiAraça gostaria de conversar sobre a assiduidade do(a) aluno(a) ${student.fullName}. Ele(a) está atualmente com ${summary.attendanceRate}% de frequência (${summary.absentCount} faltas no mês), abaixo do mínimo de 75% exigido. Estamos à disposição para apoiar!`;
 
               return (
                 <div
@@ -474,10 +474,10 @@ export function NotificationsCenter({
               <div className="bg-slate-100 rounded-xl p-4 border border-slate-200 max-w-sm mx-auto">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 mb-2">
                   <div className="w-7 h-7 rounded-full bg-blue-700 flex items-center justify-center font-bold text-white text-[10px]">
-                    VP
+                    VA
                   </div>
                   <div>
-                    <div className="font-bold text-slate-900 text-xs">VôleiPro Oficial</div>
+                    <div className="font-bold text-slate-900 text-xs">VoleiAraça Oficial</div>
                     <div className="text-[10px] text-emerald-700 font-semibold">online</div>
                   </div>
                 </div>

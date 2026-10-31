@@ -26,7 +26,7 @@ export function QRCodeDisplay({
 }: QRCodeDisplayProps) {
   const qrSvgData = useMemo(() => {
     try {
-      const qr = QRCode.create(value || 'VOLEIPRO-DEMO', {
+      const qr = QRCode.create(value || 'VOLEIARAÇA-DEMO', {
         errorCorrectionLevel: 'M',
       });
       const moduleCount = qr.modules.size;

@@ -13,7 +13,7 @@ const VolleyballAcademyMain = dynamic(
           <Trophy className="w-8 h-8" />
         </div>
         <h1 className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
-          <span>VôleiPro</span>
+          <span>VoleiAraça</span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">Oficial</span>
         </h1>
         <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5 font-medium">

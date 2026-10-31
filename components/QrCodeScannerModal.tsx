@@ -210,13 +210,12 @@ export function QrCodeScannerModal({
       const canvas = canvasRef.current;
 
       const now = Date.now();
-      // Throttle to 10-12 scans/sec (every 80ms) for high performance and zero UI freeze
-      if (now - lastScanAttemptTimeRef.current >= 80) {
+      // Scan every 60ms with higher resolution (up to 960px) for instant autofocus and scan from distance
+      if (now - lastScanAttemptTimeRef.current >= 60) {
         lastScanAttemptTimeRef.current = now;
 
         if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-          // Downscale for jsQR if video is too large (> 640px)
-          const scale = Math.min(1, 640 / video.videoWidth);
+          const scale = Math.min(1, 960 / video.videoWidth);
           const targetWidth = Math.round(video.videoWidth * scale);
           const targetHeight = Math.round(video.videoHeight * scale);
 
