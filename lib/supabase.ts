@@ -200,13 +200,15 @@ export async function testSupabaseConnection(): Promise<{
     if (error) {
       if (
         error.message.includes('relation "classes" does not exist') ||
-        error.code === '42P01'
+        error.message.includes('Could not find the table') ||
+        error.code === '42P01' ||
+        error.code === 'PGRST205'
       ) {
         return {
           success: true,
           tablesExist: false,
           message:
-            'Conexão com o Supabase ativa! Porém, as tabelas ainda não foram criadas. Copie o script SQL abaixo e execute no SQL Editor do Supabase.',
+            'Chave do Supabase conectada e validada com sucesso! Agora só falta criar as tabelas: clique em "Copiar Script SQL" e execute no SQL Editor do Supabase.',
         };
       }
       return {
@@ -282,8 +284,12 @@ export async function saveAllToSupabase(): Promise<{
         .from('classes')
         .upsert(formattedClasses, { onConflict: 'id' });
       if (errC) {
-        if (errC.message.includes('relation "classes" does not exist')) {
-          throw new Error('A tabela "classes" ainda não existe no Supabase. Execute o script de Migrations no SQL Editor do Supabase!');
+        if (
+          errC.message.includes('relation "classes" does not exist') ||
+          errC.message.includes('Could not find the table') ||
+          errC.code === 'PGRST205'
+        ) {
+          throw new Error('As tabelas ainda não foram criadas no Supabase. Clique em "Copiar Script SQL" e execute no SQL Editor do Supabase!');
         }
         throw new Error(`Erro ao salvar turmas: ${errC.message}`);
       }
@@ -320,7 +326,11 @@ export async function saveAllToSupabase(): Promise<{
         .from('students')
         .upsert(formattedStudents, { onConflict: 'id' });
       if (errS) {
-        if (errS.message.includes('relation "students" does not exist')) {
+        if (
+          errS.message.includes('relation "students" does not exist') ||
+          errS.message.includes('Could not find the table') ||
+          errS.code === 'PGRST205'
+        ) {
           throw new Error('A tabela "students" ainda não existe no Supabase. Execute o script de Migrations no SQL Editor!');
         }
         throw new Error(`Erro ao salvar alunos: ${errS.message}`);
