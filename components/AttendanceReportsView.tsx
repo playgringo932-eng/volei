@@ -36,13 +36,13 @@ export function AttendanceReportsView({
   }, [classes]);
 
   const monthSessions = useMemo(() => {
-    return sessions
-      .filter((s) => s.date.startsWith(selectedMonth) && (selectedClassId === 'all' || s.classId === selectedClassId))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    return (sessions || [])
+      .filter((s) => s && s.date && typeof s.date === 'string' && s.date.startsWith(selectedMonth) && (selectedClassId === 'all' || s.classId === selectedClassId))
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   }, [sessions, selectedMonth, selectedClassId]);
 
   const uniqueDates = useMemo(() => {
-    return Array.from(new Set(monthSessions.map((s) => s.date))).sort();
+    return Array.from(new Set(monthSessions.map((s) => s?.date).filter(Boolean))).sort();
   }, [monthSessions]);
 
   const filteredStudents = useMemo(() => {
@@ -271,7 +271,7 @@ export function AttendanceReportsView({
                 <th className="py-3 px-4 min-w-[180px]">Aluno & Categoria</th>
                 <th className="py-3 px-3 min-w-[120px]">Turma</th>
                 {uniqueDates.map((date) => {
-                  const day = date.split('-')[2];
+                  const day = date && date.includes('-') ? date.split('-')[2] : (date || '-');
                   return (
                     <th key={date} className="py-3 px-2 text-center min-w-[36px]" title={date}>
                       {day}
@@ -315,7 +315,7 @@ export function AttendanceReportsView({
 
                       {uniqueDates.map((date) => {
                         const session = monthSessions.find((s) => s.date === date && (s.classId === student.classId || selectedClassId === 'all'));
-                        const entry = session?.entries[student.id];
+                        const entry = session?.entries?.[student.id];
 
                         let symbol = '-';
                         let colorClass = 'text-slate-300';

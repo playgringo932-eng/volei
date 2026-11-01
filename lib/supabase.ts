@@ -1,7 +1,14 @@
 'use client';
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { storageService } from '@/lib/storage';
+import {
+  storageService,
+  normalizeStudent,
+  normalizeClass,
+  normalizeSession,
+  normalizeNotification,
+  normalizeSponsor,
+} from '@/lib/storage';
 import {
   Student,
   VolleyballClass,
@@ -408,16 +415,16 @@ export async function saveAllToSupabase(): Promise<{
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_LAST_SYNC, timestamp);
 
-      // Sincroniza em segundo plano com o servidor para acesso imediato de celulares
+      // Sincroniza em segundo plano com o servidor em formato canônico para acesso imediato de celulares
       fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           data: {
-            classes: formattedClasses,
-            students: formattedStudents,
-            sessions: formattedSessions,
-            notifications: formattedNotifs,
+            classes,
+            students,
+            sessions,
+            notifications,
             sponsors,
             sponsorSize,
           },
@@ -480,93 +487,31 @@ export async function loadAllFromSupabase(): Promise<{
     const hasData = (dbClasses && dbClasses.length > 0) || (dbStudents && dbStudents.length > 0);
 
     if (dbClasses && dbClasses.length > 0) {
-      const mappedClasses: VolleyballClass[] = dbClasses.map((c) => ({
-        id: c.id,
-        name: c.name,
-        category: c.category,
-        shift: c.shift,
-        startTime: c.start_time,
-        endTime: c.end_time,
-        daysOfWeek: c.days_of_week || [],
-        instructorName: c.instructor_name,
-        court: c.court,
-        maxCapacity: c.max_capacity,
-        minAge: c.min_age,
-        maxAge: c.max_age,
-        colorTag: c.color_tag,
-      }));
-      storageService.saveClasses(mappedClasses);
+      const mappedClasses: VolleyballClass[] = dbClasses.map(normalizeClass);
+      storageService.saveClasses(mappedClasses, false);
     }
 
     if (dbStudents && dbStudents.length > 0) {
-      const mappedStudents: Student[] = dbStudents.map((s) => ({
-        id: s.id,
-        registrationNumber: s.registration_number,
-        fullName: s.full_name,
-        birthDate: s.birth_date,
-        age: s.age,
-        gender: s.gender,
-        category: s.category,
-        preferredPosition: s.preferred_position,
-        level: s.level,
-        heightCm: s.height_cm,
-        jerseyNumber: s.jersey_number,
-        classId: s.class_id,
-        status: s.status,
-        enrollmentDate: s.enrollment_date,
-        medicalConditions: s.medical_conditions,
-        allergies: s.allergies,
-        guardian: s.guardian || { name: '', phone: '', relationship: '' },
-        notes: s.notes,
-        avatarSeed: s.avatar_seed,
-        photoUrl: s.photo_url,
-        cardValidUntil: s.card_valid_until,
-      }));
-      storageService.saveStudents(mappedStudents);
+      const mappedStudents: Student[] = dbStudents.map(normalizeStudent);
+      storageService.saveStudents(mappedStudents, false);
     }
 
     if (dbSessions && dbSessions.length > 0) {
-      const mappedSessions: DailyAttendanceSession[] = dbSessions.map((sess) => ({
-        id: sess.id,
-        classId: sess.class_id,
-        date: sess.date,
-        instructorName: sess.instructor_name,
-        entries: sess.entries || {},
-        savedAt: sess.saved_at,
-        shift: sess.shift,
-      }));
-      storageService.saveAttendanceSessions(mappedSessions);
+      const mappedSessions: DailyAttendanceSession[] = dbSessions.map(normalizeSession);
+      storageService.saveAttendanceSessions(mappedSessions, false);
     }
 
     if (dbNotifs && dbNotifs.length > 0) {
-      const mappedNotifs: NotificationLog[] = dbNotifs.map((n) => ({
-        id: n.id,
-        studentId: n.student_id,
-        studentName: n.student_name,
-        guardianName: n.guardian_name,
-        guardianPhone: n.guardian_phone,
-        guardianEmail: n.guardian_email,
-        type: n.type,
-        message: n.message,
-        channel: n.channel,
-        sentAt: n.sent_at,
-        status: n.status,
-      }));
-      storageService.saveNotifications(mappedNotifs);
+      const mappedNotifs: NotificationLog[] = dbNotifs.map(normalizeNotification);
+      storageService.saveNotifications(mappedNotifs, false);
     }
 
     // Carrega patrocinadores do Supabase se existirem
     try {
       const { data: dbSponsors } = await client.from('sponsors').select('*');
       if (dbSponsors && dbSponsors.length > 0) {
-        const mappedSponsors: SponsorLogo[] = dbSponsors.map((sp) => ({
-          id: sp.id,
-          name: sp.name,
-          category: sp.category,
-          logoUrl: sp.logo_url,
-          isActive: sp.is_active,
-        }));
-        storageService.saveSponsors(mappedSponsors);
+        const mappedSponsors: SponsorLogo[] = dbSponsors.map(normalizeSponsor);
+        storageService.saveSponsors(mappedSponsors, false);
       }
     } catch {
       // Ignora se tabela sponsors ainda não foi criada

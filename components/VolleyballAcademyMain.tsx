@@ -75,23 +75,31 @@ export function VolleyballAcademyMain() {
   };
 
   const reloadData = () => {
-    const freshStudents = storageService.getStudents();
-    setStudents(freshStudents);
-    setClasses(storageService.getClasses());
-    setSessions(storageService.getAttendanceSessions());
-    setNotifications(storageService.getNotifications());
+    try {
+      const freshStudents = storageService.getStudents();
+      setStudents(freshStudents);
+      setClasses(storageService.getClasses());
+      setSessions(storageService.getAttendanceSessions());
+      setNotifications(storageService.getNotifications());
 
-    // Synchronize open modals with refreshed data
-    setSelectedStudentForDetails((prev) => (prev ? freshStudents.find((s) => s.id === prev.id) || null : null));
-    setSelectedStudentForIdCard((prev) => (prev ? freshStudents.find((s) => s.id === prev.id) || null : null));
+      // Synchronize open modals with refreshed data
+      setSelectedStudentForDetails((prev) => (prev ? freshStudents.find((s) => s.id === prev.id) || null : null));
+      setSelectedStudentForIdCard((prev) => (prev ? freshStudents.find((s) => s.id === prev.id) || null : null));
+    } catch (err) {
+      console.error('Erro ao recarregar dados:', err);
+    }
   };
 
   useEffect(() => {
     const unsubscribe = storageService.subscribe(() => {
-      setStudents(storageService.getStudents());
-      setClasses(storageService.getClasses());
-      setSessions(storageService.getAttendanceSessions());
-      setNotifications(storageService.getNotifications());
+      try {
+        setStudents(storageService.getStudents());
+        setClasses(storageService.getClasses());
+        setSessions(storageService.getAttendanceSessions());
+        setNotifications(storageService.getNotifications());
+      } catch (err) {
+        console.error('Erro na atualização de storage:', err);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -99,23 +107,27 @@ export function VolleyballAcademyMain() {
   // Sincronização bidirecional em tempo real entre PC e Celular
   useEffect(() => {
     async function initCrossDeviceSync() {
-      // 1. Tenta puxar alterações recentes do servidor compartilhado (ex: celular recebendo dados do PC)
-      const synced = await syncServerAndDevices();
-      if (synced) {
-        reloadData();
-      } else {
-        // Se este for o dispositivo com os dados principais, publica para o servidor
-        storageService.pushAllToSharedSync();
-      }
-
-      // 2. Se o Supabase estiver configurado, carrega da nuvem
-      if (isSupabaseConfigured()) {
-        setIsCloudConnected(true);
-        const res = await loadAllFromSupabase();
-        if (res.success && res.hasData) {
+      try {
+        // 1. Tenta puxar alterações recentes do servidor compartilhado (ex: celular recebendo dados do PC)
+        const synced = await syncServerAndDevices();
+        if (synced) {
           reloadData();
-          showToast('✓ Sincronizado com a nuvem Supabase!', 'success');
+        } else {
+          // Se este for o dispositivo com os dados principais, publica para o servidor
+          storageService.pushAllToSharedSync();
         }
+
+        // 2. Se o Supabase estiver configurado, carrega da nuvem com tratamento seguro
+        if (isSupabaseConfigured()) {
+          setIsCloudConnected(true);
+          const res = await loadAllFromSupabase();
+          if (res.success && res.hasData) {
+            reloadData();
+            showToast('✓ Sincronizado com a nuvem Supabase!', 'success');
+          }
+        }
+      } catch (err) {
+        console.error('Erro na sincronização de dados:', err);
       }
     }
     initCrossDeviceSync();
@@ -124,16 +136,19 @@ export function VolleyballAcademyMain() {
   // Atualização em tempo real ao focar ou reabrir o app no celular
   useEffect(() => {
     const handleDeviceFocus = async () => {
-      const pulled = await storageService.pullFromSharedSync();
-      if (pulled) {
-        reloadData();
-      }
-      if (isSupabaseConfigured()) {
-        loadAllFromSupabase().then((res) => {
+      try {
+        const pulled = await storageService.pullFromSharedSync();
+        if (pulled) {
+          reloadData();
+        }
+        if (isSupabaseConfigured()) {
+          const res = await loadAllFromSupabase();
           if (res.success && res.hasData) {
             reloadData();
           }
-        });
+        }
+      } catch (err) {
+        console.error('Erro ao focar na janela:', err);
       }
     };
     window.addEventListener('focus', handleDeviceFocus);

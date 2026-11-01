@@ -25,6 +25,12 @@ const VolleyballAcademyMain = dynamic(
   }
 );
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
 export default function Page() {
-  return <VolleyballAcademyMain />;
+  return (
+    <ErrorBoundary>
+      <VolleyballAcademyMain />
+    </ErrorBoundary>
+  );
 }

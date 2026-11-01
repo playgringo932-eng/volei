@@ -50,13 +50,15 @@ export function StudentDetailsModal({
   const currentClass = classes.find((c) => c.id === student.classId);
   const summary = storageService.getStudentAttendanceSummary(student.id, '2026-10');
 
-  const studentSessions = sessions
-    .filter((s) => s.entries[student.id])
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const studentSessions = (sessions || [])
+    .filter((s) => s && s.entries && s.entries[student.id])
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   const handleWhatsAppClick = () => {
-    const text = `Olá ${student.guardian.name}, tudo bem? Aqui é da coordenação da Academia VoleiAraça sobre o(a) atleta ${student.fullName}.`;
-    const url = createWhatsAppLink(student.guardian.phone, text);
+    const guardianName = student.guardian?.name || 'Responsável';
+    const guardianPhone = student.guardian?.phone || '';
+    const text = `Olá ${guardianName}, tudo bem? Aqui é da coordenação da Academia VoleiAraça sobre o(a) atleta ${student.fullName || ''}.`;
+    const url = createWhatsAppLink(guardianPhone, text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -67,7 +69,7 @@ export function StudentDetailsModal({
         <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-700 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-xs shrink-0">
-              {student.jerseyNumber ? `#${student.jerseyNumber}` : student.fullName.charAt(0)}
+              {student.jerseyNumber ? `#${student.jerseyNumber}` : (student.fullName || 'A').charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -79,7 +81,7 @@ export function StudentDetailsModal({
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
                 <span>Matrícula: <strong className="text-slate-800 font-mono">{student.registrationNumber}</strong></span>
                 <span>•</span>
-                <span>{student.age} anos (Nasc: {student.birthDate.split('-').reverse().join('/')})</span>
+                <span>{student.age} anos (Nasc: {student.birthDate ? student.birthDate.split('-').reverse().join('/') : '-'})</span>
               </p>
             </div>
           </div>
@@ -228,20 +230,20 @@ export function StudentDetailsModal({
               <div className="flex items-center gap-2 text-slate-700">
                 <User className="w-4 h-4 text-slate-400" />
                 <span>
-                  <strong>{student.guardian.name}</strong> ({student.guardian.relationship})
+                  <strong>{student.guardian?.name || 'Responsável'}</strong> ({student.guardian?.relationship || 'Responsável'})
                 </span>
               </div>
               <div className="flex items-center gap-2 text-slate-700 font-mono">
                 <Phone className="w-4 h-4 text-emerald-600" />
-                <span>{student.guardian.phone}</span>
+                <span>{student.guardian?.phone || 'Sem contato'}</span>
               </div>
-              {student.guardian.email && (
+              {student.guardian?.email && (
                 <div className="flex items-center gap-2 text-slate-700">
                   <Mail className="w-4 h-4 text-blue-600" />
                   <span>{student.guardian.email}</span>
                 </div>
               )}
-              {student.guardian.emergencyPhone && (
+              {student.guardian?.emergencyPhone && (
                 <div className="flex items-center gap-2 text-slate-700 font-mono">
                   <Phone className="w-4 h-4 text-amber-600" />
                   <span>Emergência: {student.guardian.emergencyPhone}</span>

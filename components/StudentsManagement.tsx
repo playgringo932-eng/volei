@@ -72,12 +72,18 @@ export function StudentsManagement({
   // Filter students
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
+      if (!s) return false;
+
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
-        const matchesName = s.fullName.toLowerCase().includes(query);
-        const matchesReg = s.registrationNumber.toLowerCase().includes(query);
-        const matchesGuardian = s.guardian.name.toLowerCase().includes(query);
-        const matchesPhone = s.guardian.phone.includes(query);
+        const name = (s.fullName || '').toLowerCase();
+        const reg = (s.registrationNumber || '').toLowerCase();
+        const guardianName = (s.guardian?.name || '').toLowerCase();
+        const guardianPhone = s.guardian?.phone || '';
+        const matchesName = name.includes(query);
+        const matchesReg = reg.includes(query);
+        const matchesGuardian = guardianName.includes(query);
+        const matchesPhone = guardianPhone.includes(query);
         if (!matchesName && !matchesReg && !matchesGuardian && !matchesPhone) {
           return false;
         }
@@ -111,8 +117,10 @@ export function StudentsManagement({
   };
 
   const handleWhatsApp = (student: Student) => {
-    const text = `Olá ${student.guardian.name}, tudo bem? Aqui é da coordenação da Academia VoleiAraça sobre as aulas de vôlei do(a) ${student.fullName}.`;
-    const url = createWhatsAppLink(student.guardian.phone, text);
+    const guardianName = student.guardian?.name || 'Responsável';
+    const guardianPhone = student.guardian?.phone || '';
+    const text = `Olá ${guardianName}, tudo bem? Aqui é da coordenação da Academia VoleiAraça sobre as aulas de vôlei do(a) ${student.fullName || ''}.`;
+    const url = createWhatsAppLink(guardianPhone, text);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -411,7 +419,7 @@ export function StudentsManagement({
                             </span>
                           </div>
                           <span className="text-[10px] text-slate-500 block">
-                            Nasc: {student.birthDate.split('-').reverse().join('/')}
+                            Nasc: {student.birthDate ? student.birthDate.split('-').reverse().join('/') : '-'}
                           </span>
                         </td>
 
@@ -487,9 +495,11 @@ export function StudentsManagement({
                           <div className="flex items-center justify-between gap-1">
                             <div>
                               <div className="font-semibold text-slate-900 truncate max-w-[130px]">
-                                {student.guardian.name}
+                                {student.guardian?.name || 'Responsável'}
                               </div>
-                              <div className="text-[11px] text-slate-500 font-mono">{student.guardian.phone}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">
+                                {student.guardian?.phone || 'Sem contato'}
+                              </div>
                             </div>
                             <button
                               onClick={() => handleWhatsApp(student)}

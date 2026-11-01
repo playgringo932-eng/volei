@@ -44,36 +44,241 @@ function syncToServer(data: Record<string, unknown>): void {
   }
 }
 
+// ==========================================
+// DATA NORMALIZATION & DEFENSIVE SANITIZATION
+// Prevents any client crash from unparsed JSON,
+// snake_case/camelCase mismatch, or missing null fields
+// ==========================================
+
+export function normalizeStudent(raw: any): Student {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: `s_fallback_${Date.now()}`,
+      registrationNumber: 'REG-000',
+      fullName: 'Atleta',
+      birthDate: '2012-01-01',
+      age: 12,
+      gender: 'Masculino',
+      category: 'Sub-15',
+      preferredPosition: 'Ponteiro(a)',
+      level: 'Iniciante',
+      classId: '',
+      status: 'Ativo',
+      enrollmentDate: new Date().toISOString().split('T')[0],
+      guardian: {
+        name: 'Responsável',
+        phone: '',
+        relationship: 'Mãe',
+        email: '',
+        allowWhatsAppNotifications: true,
+      },
+      cardValidUntil: '2026-12-31',
+    };
+  }
+
+  // Handle guardian (can be string, object, null or snake_case)
+  let guardianRaw = raw.guardian;
+  if (typeof guardianRaw === 'string') {
+    try {
+      guardianRaw = JSON.parse(guardianRaw);
+    } catch {
+      guardianRaw = null;
+    }
+  }
+  if (!guardianRaw || typeof guardianRaw !== 'object') {
+    guardianRaw = {};
+  }
+
+  const guardian: Student['guardian'] = {
+    name: String(guardianRaw.name || guardianRaw.nome || raw.guardian_name || 'Responsável').trim(),
+    phone: String(guardianRaw.phone || guardianRaw.telefone || raw.guardian_phone || '').trim(),
+    relationship: (guardianRaw.relationship || guardianRaw.parentesco || 'Mãe') as Student['guardian']['relationship'],
+    email: guardianRaw.email || raw.guardian_email || '',
+    emergencyPhone: guardianRaw.emergencyPhone || guardianRaw.emergency_phone || undefined,
+    allowWhatsAppNotifications: Boolean(guardianRaw.allowWhatsAppNotifications ?? true),
+  };
+
+  const id = String(raw.id || raw.registration_number || raw.registrationNumber || `s_${Math.random().toString(36).substring(2, 9)}`);
+  const registrationNumber = String(
+    raw.registrationNumber || raw.registration_number || raw.matricula || raw.reg || id
+  );
+  const fullName = String(raw.fullName || raw.full_name || raw.nome || raw.name || 'Atleta').trim();
+  const birthDate = String(raw.birthDate || raw.birth_date || raw.data_nascimento || '2012-01-01');
+  const age = Number(raw.age) || 12;
+  const gender = String(raw.gender || raw.genero || 'Masculino') as Student['gender'];
+  const category = String(raw.category || raw.categoria || 'Sub-15') as Student['category'];
+  const preferredPosition = String(raw.preferredPosition || raw.preferred_position || raw.posicao || 'Ponteiro(a)') as Student['preferredPosition'];
+  const level = String(raw.level || raw.nivel || 'Iniciante') as Student['level'];
+  const heightCm = raw.heightCm != null ? Number(raw.heightCm) : (raw.height_cm != null ? Number(raw.height_cm) : undefined);
+  const jerseyNumber = raw.jerseyNumber != null ? Number(raw.jerseyNumber) : (raw.jersey_number != null ? Number(raw.jersey_number) : undefined);
+  const classId = String(raw.classId || raw.class_id || '');
+  const status = (raw.status || 'Ativo') as Student['status'];
+  const enrollmentDate = String(raw.enrollmentDate || raw.enrollment_date || new Date().toISOString().split('T')[0]);
+  const medicalConditions = raw.medicalConditions || raw.medical_conditions || undefined;
+  const allergies = raw.allergies || undefined;
+  const notes = raw.notes || undefined;
+  const avatarSeed = String(raw.avatarSeed || raw.avatar_seed || id);
+  const photoUrl = raw.photoUrl || raw.photo_url || undefined;
+  const cardValidUntil = String(raw.cardValidUntil || raw.card_valid_until || '2026-12-31');
+
+  return {
+    id,
+    registrationNumber,
+    fullName,
+    birthDate,
+    age,
+    gender,
+    category,
+    preferredPosition,
+    level,
+    heightCm,
+    jerseyNumber,
+    classId,
+    status,
+    enrollmentDate,
+    medicalConditions,
+    allergies,
+    guardian,
+    notes,
+    avatarSeed,
+    photoUrl,
+    cardValidUntil,
+  };
+}
+
+export function normalizeClass(raw: any): VolleyballClass {
+  if (!raw || typeof raw !== 'object') {
+    return INITIAL_CLASSES[0];
+  }
+  let days = raw.daysOfWeek ?? raw.days_of_week;
+  if (typeof days === 'string') {
+    try {
+      days = JSON.parse(days);
+    } catch {
+      days = [];
+    }
+  }
+  if (!Array.isArray(days)) {
+    days = ['Segunda', 'Quarta'];
+  }
+
+  return {
+    id: String(raw.id || `c_${Math.random().toString(36).substring(2, 9)}`),
+    name: String(raw.name || raw.nome || 'Turma'),
+    category: (raw.category || raw.categoria || 'Sub-15') as VolleyballClass['category'],
+    shift: (raw.shift || raw.turno || 'Tarde') as VolleyballClass['shift'],
+    startTime: String(raw.startTime || raw.start_time || '14:00'),
+    endTime: String(raw.endTime || raw.end_time || '15:30'),
+    daysOfWeek: days,
+    instructorName: String(raw.instructorName || raw.instructor_name || 'Prof. Responsável'),
+    court: String(raw.court || raw.quadra || 'Quadra Principal'),
+    maxCapacity: Number(raw.maxCapacity || raw.max_capacity) || 30,
+    minAge: Number(raw.minAge || raw.min_age) || 7,
+    maxAge: Number(raw.maxAge || raw.max_age) || 17,
+    colorTag: raw.colorTag || raw.color_tag || 'blue',
+  };
+}
+
+export function normalizeSession(raw: any): DailyAttendanceSession {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: `session_${Date.now()}`,
+      classId: '',
+      date: new Date().toISOString().split('T')[0],
+      instructorName: '',
+      entries: {},
+      savedAt: new Date().toISOString(),
+      shift: 'Tarde',
+    };
+  }
+
+  let entries = raw.entries;
+  if (typeof entries === 'string') {
+    try {
+      entries = JSON.parse(entries);
+    } catch {
+      entries = {};
+    }
+  }
+  if (!entries || typeof entries !== 'object' || Array.isArray(entries)) {
+    entries = {};
+  }
+
+  return {
+    id: String(raw.id || `${raw.classId || raw.class_id || 'class'}_${raw.date || ''}`),
+    classId: String(raw.classId || raw.class_id || ''),
+    date: String(raw.date || ''),
+    instructorName: String(raw.instructorName || raw.instructor_name || ''),
+    entries,
+    savedAt: String(raw.savedAt || raw.saved_at || new Date().toISOString()),
+    shift: (raw.shift || 'Tarde') as DailyAttendanceSession['shift'],
+  };
+}
+
+export function normalizeNotification(raw: any): NotificationLog {
+  return {
+    id: String(raw?.id || `notif_${Date.now()}`),
+    studentId: String(raw?.studentId || raw?.student_id || ''),
+    studentName: String(raw?.studentName || raw?.student_name || 'Aluno'),
+    guardianName: String(raw?.guardianName || raw?.guardian_name || 'Responsável'),
+    guardianPhone: String(raw?.guardianPhone || raw?.guardian_phone || ''),
+    guardianEmail: raw?.guardianEmail || raw?.guardian_email || undefined,
+    type: raw?.type || 'presenca',
+    message: String(raw?.message || ''),
+    channel: raw?.channel || 'WhatsApp',
+    sentAt: String(raw?.sentAt || raw?.sent_at || new Date().toISOString()),
+    status: raw?.status || 'Enviado',
+  };
+}
+
+export function normalizeSponsor(raw: any): SponsorLogo {
+  return {
+    id: String(raw?.id || `sp_${Date.now()}`),
+    name: String(raw?.name || 'Patrocinador'),
+    category: String(raw?.category || 'Apoiador Oficial'),
+    logoUrl: String(raw?.logoUrl || raw?.logo_url || ''),
+    isActive: Boolean(raw?.isActive ?? raw?.is_active ?? true),
+  };
+}
+
+// ==========================================
+// STORAGE SERVICE IMPLEMENTATION
+// ==========================================
+
 export const storageService = {
   // --- STUDENTS ---
   getStudents(): Student[] {
-    if (!isClient) return INITIAL_STUDENTS;
+    if (!isClient) return INITIAL_STUDENTS.map(normalizeStudent);
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
-        return INITIAL_STUDENTS;
+        const initial = INITIAL_STUDENTS.map(normalizeStudent);
+        localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(initial));
+        return initial;
       }
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return INITIAL_STUDENTS.map(normalizeStudent);
+      return parsed.map(normalizeStudent);
     } catch {
-      return INITIAL_STUDENTS;
+      return INITIAL_STUDENTS.map(normalizeStudent);
     }
   },
 
   saveStudents(students: Student[], sync = true): void {
     if (!isClient) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+      const normalized = (Array.isArray(students) ? students : []).map(normalizeStudent);
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(normalized));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'students' } }));
+      if (sync) syncToServer({ students: normalized });
     } catch (err) {
       console.warn('Erro ao salvar alunos:', err);
     }
-    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'students' } }));
-    if (sync) syncToServer({ students });
   },
 
   addStudent(student: Student): void {
     const list = this.getStudents();
-    list.unshift(student);
+    list.unshift(normalizeStudent(student));
     this.saveStudents(list);
   },
 
@@ -81,7 +286,7 @@ export const storageService = {
     const list = this.getStudents();
     const index = list.findIndex((s) => s.id === student.id);
     if (index !== -1) {
-      list[index] = student;
+      list[index] = normalizeStudent(student);
       this.saveStudents(list);
     }
   },
@@ -106,33 +311,37 @@ export const storageService = {
 
   // --- CLASSES (TURMAS) ---
   getClasses(): VolleyballClass[] {
-    if (!isClient) return INITIAL_CLASSES;
+    if (!isClient) return INITIAL_CLASSES.map(normalizeClass);
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(INITIAL_CLASSES));
-        return INITIAL_CLASSES;
+        const initial = INITIAL_CLASSES.map(normalizeClass);
+        localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(initial));
+        return initial;
       }
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return INITIAL_CLASSES.map(normalizeClass);
+      return parsed.map(normalizeClass);
     } catch {
-      return INITIAL_CLASSES;
+      return INITIAL_CLASSES.map(normalizeClass);
     }
   },
 
   saveClasses(classes: VolleyballClass[], sync = true): void {
     if (!isClient) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(classes));
+      const normalized = (Array.isArray(classes) ? classes : []).map(normalizeClass);
+      localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(normalized));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'classes' } }));
+      if (sync) syncToServer({ classes: normalized });
     } catch (err) {
       console.warn('Erro ao salvar turmas:', err);
     }
-    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'classes' } }));
-    if (sync) syncToServer({ classes });
   },
 
   addClass(cls: VolleyballClass): void {
     const list = this.getClasses();
-    list.push(cls);
+    list.push(normalizeClass(cls));
     this.saveClasses(list);
   },
 
@@ -140,7 +349,7 @@ export const storageService = {
     const list = this.getClasses();
     const index = list.findIndex((c) => c.id === cls.id);
     if (index !== -1) {
-      list[index] = cls;
+      list[index] = normalizeClass(cls);
       this.saveClasses(list);
     }
   },
@@ -152,29 +361,32 @@ export const storageService = {
 
   // --- ATTENDANCE SESSIONS ---
   getAttendanceSessions(): DailyAttendanceSession[] {
-    if (!isClient) return generateInitialAttendanceSessions();
+    if (!isClient) return generateInitialAttendanceSessions().map(normalizeSession);
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
       if (!data) {
-        const initial = generateInitialAttendanceSessions();
+        const initial = generateInitialAttendanceSessions().map(normalizeSession);
         localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(initial));
         return initial;
       }
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return generateInitialAttendanceSessions().map(normalizeSession);
+      return parsed.map(normalizeSession);
     } catch {
-      return generateInitialAttendanceSessions();
+      return generateInitialAttendanceSessions().map(normalizeSession);
     }
   },
 
   saveAttendanceSessions(sessions: DailyAttendanceSession[], sync = true): void {
     if (!isClient) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(sessions));
+      const normalized = (Array.isArray(sessions) ? sessions : []).map(normalizeSession);
+      localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(normalized));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'attendance' } }));
+      if (sync) syncToServer({ sessions: normalized });
     } catch (err) {
       console.warn('Erro ao salvar chamadas:', err);
     }
-    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'attendance' } }));
-    if (sync) syncToServer({ sessions });
   },
 
   getSession(classId: string, date: string): DailyAttendanceSession | undefined {
@@ -183,17 +395,24 @@ export const storageService = {
   },
 
   recordAttendance(session: DailyAttendanceSession): void {
+    const normalized = normalizeSession(session);
     const sessions = this.getAttendanceSessions();
-    const index = sessions.findIndex((s) => s.id === session.id || (s.classId === session.classId && s.date === session.date));
+    const index = sessions.findIndex(
+      (s) => s.id === normalized.id || (s.classId === normalized.classId && s.date === normalized.date)
+    );
     if (index !== -1) {
-      sessions[index] = session;
+      sessions[index] = normalized;
     } else {
-      sessions.push(session);
+      sessions.push(normalized);
     }
     this.saveAttendanceSessions(sessions);
   },
 
-  checkInStudentByQrCode(rawCode: string, targetDate?: string, targetClassId?: string): {
+  checkInStudentByQrCode(
+    rawCode: string,
+    targetDate?: string,
+    targetClassId?: string
+  ): {
     success: boolean;
     student?: Student;
     classObj?: VolleyballClass;
@@ -250,91 +469,61 @@ export const storageService = {
     }
 
     const students = this.getStudents();
-    const normalizedQuery = trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    const student = students.find((s) => {
-      const sId = (s.id || '').toLowerCase();
-      const sReg = (s.registrationNumber || '').toLowerCase();
-      const sRegNorm = sReg.replace(/[^a-z0-9]/g, '');
-      const sName = (s.fullName || '').toLowerCase();
-
-      if (studentIdCandidate && sId === studentIdCandidate.toLowerCase()) return true;
-      if (regCandidate && sReg === regCandidate.toLowerCase()) return true;
-      if (regCandidate && sRegNorm === regCandidate.toLowerCase().replace(/[^a-z0-9]/g, '')) return true;
-      if (nameCandidate && sName === nameCandidate.toLowerCase()) return true;
-
-      // Direct checks
-      if (sId === trimmed.toLowerCase()) return true;
-      if (sReg === trimmed.toLowerCase()) return true;
-      if (sRegNorm === normalizedQuery) return true;
-      if (sName === trimmed.toLowerCase()) return true;
-
-      // Match by number suffix (e.g. "0001" matches "VP-2026-0001")
-      if (trimmed.length >= 3 && sReg.endsWith(trimmed.toLowerCase())) return true;
-
-      return false;
-    });
+    const student = students.find(
+      (s) =>
+        (studentIdCandidate && s.id.toLowerCase() === studentIdCandidate.toLowerCase()) ||
+        (regCandidate && s.registrationNumber.toLowerCase() === regCandidate.toLowerCase()) ||
+        (nameCandidate && s.fullName.toLowerCase().includes(nameCandidate.toLowerCase()))
+    );
 
     if (!student) {
       return {
         success: false,
-        message: `Carteirinha não localizada no sistema (${trimmed}). Verifique o código.`,
+        message: `Atleta não encontrado no sistema para o código: "${trimmed.slice(0, 30)}"`,
         timestamp,
       };
     }
 
+    const effectiveClassId = targetClassId || student.classId;
     const classes = this.getClasses();
-    // Resolve target class: specified class, student's assigned class, or first available class
-    const classObj =
-      (targetClassId && classes.find((c) => c.id === targetClassId)) ||
-      classes.find((c) => c.id === student.classId) ||
-      classes[0] || {
-        id: 'class-general',
-        name: 'Turma Geral de Vôlei',
-        category: student.category,
-        shift: 'Manhã',
-        startTime: '08:00',
-        endTime: '09:30',
-        daysOfWeek: ['Segunda', 'Quarta', 'Sexta'],
-        instructorName: 'Coordenação VoleiAraça',
-        court: 'Quadra Central',
-        maxCapacity: 30,
-        enrolledCount: 1,
+    const classObj = classes.find((c) => c.id === effectiveClassId) || classes[0];
+
+    if (!classObj) {
+      return {
+        success: false,
+        student,
+        message: 'Nenhuma turma configurada para registrar a presença.',
+        timestamp,
       };
+    }
 
-    // Find or create attendance session for this class and date
-    const sessions = this.getAttendanceSessions();
-    const sessionId = `${classObj.id}_${dateStr}`;
-    let session = sessions.find((s) => s.id === sessionId || (s.classId === classObj.id && s.date === dateStr));
-
-    const alreadyPresent = session?.entries?.[student.id]?.status === 'presente';
+    let session = this.getSession(classObj.id, dateStr);
+    let alreadyPresent = false;
 
     if (!session) {
       session = {
-        id: sessionId,
+        id: `${classObj.id}_${dateStr}`,
         classId: classObj.id,
         date: dateStr,
         instructorName: classObj.instructorName,
         entries: {},
-        savedAt: now.toISOString(),
+        savedAt: new Date().toISOString(),
         shift: classObj.shift,
       };
-      sessions.push(session);
     }
 
-    if (!session.entries) {
-      session.entries = {};
+    if (!session.entries) session.entries = {};
+
+    if (session.entries[student.id]?.status === 'presente') {
+      alreadyPresent = true;
+    } else {
+      session.entries[student.id] = {
+        status: 'presente',
+        updatedAt: new Date().toISOString(),
+      };
+      session.savedAt = new Date().toISOString();
+      this.recordAttendance(session);
     }
-
-    // Mark presence
-    session.entries[student.id] = {
-      status: 'presente',
-      note: 'Presença confirmada via Leitor QR Code',
-      updatedAt: now.toISOString(),
-    };
-    session.savedAt = now.toISOString();
-
-    this.saveAttendanceSessions(sessions);
 
     return {
       success: true,
@@ -350,65 +539,73 @@ export const storageService = {
 
   // --- NOTIFICATIONS ---
   getNotifications(): NotificationLog[] {
-    if (!isClient) return INITIAL_NOTIFICATIONS;
+    if (!isClient) return INITIAL_NOTIFICATIONS.map(normalizeNotification);
     try {
       const data = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(INITIAL_NOTIFICATIONS));
-        return INITIAL_NOTIFICATIONS;
+        const initial = INITIAL_NOTIFICATIONS.map(normalizeNotification);
+        localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(initial));
+        return initial;
       }
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return INITIAL_NOTIFICATIONS.map(normalizeNotification);
+      return parsed.map(normalizeNotification);
     } catch {
-      return INITIAL_NOTIFICATIONS;
+      return INITIAL_NOTIFICATIONS.map(normalizeNotification);
     }
   },
 
   saveNotifications(logs: NotificationLog[], sync = true): void {
     if (!isClient) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(logs));
+      const normalized = (Array.isArray(logs) ? logs : []).map(normalizeNotification);
+      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(normalized));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'notifications' } }));
+      if (sync) syncToServer({ notifications: normalized });
     } catch (err) {
       console.warn('Erro ao salvar notificações:', err);
     }
-    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'notifications' } }));
-    if (sync) syncToServer({ notifications: logs });
   },
 
   addNotification(log: NotificationLog): void {
     const list = this.getNotifications();
-    list.unshift(log);
+    list.unshift(normalizeNotification(log));
     this.saveNotifications(list);
   },
 
   // --- SPONSORS (PATROCINADORES DA CARTEIRINHA) ---
   getSponsors(): SponsorLogo[] {
-    if (!isClient) return DEFAULT_SPONSORS;
+    if (!isClient) return DEFAULT_SPONSORS.map(normalizeSponsor);
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SPONSORS);
       if (!data) {
-        localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(DEFAULT_SPONSORS));
-        return DEFAULT_SPONSORS;
+        const initial = DEFAULT_SPONSORS.map(normalizeSponsor);
+        localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(initial));
+        return initial;
       }
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return DEFAULT_SPONSORS.map(normalizeSponsor);
+      return parsed.map(normalizeSponsor);
     } catch {
-      return DEFAULT_SPONSORS;
+      return DEFAULT_SPONSORS.map(normalizeSponsor);
     }
   },
 
   saveSponsors(sponsors: SponsorLogo[], sync = true): void {
     if (!isClient) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(sponsors));
+      const normalized = (Array.isArray(sponsors) ? sponsors : []).map(normalizeSponsor);
+      localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(normalized));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsors' } }));
+      if (sync) syncToServer({ sponsors: normalized });
     } catch (err) {
       console.warn('Erro ao salvar patrocinadores no localStorage:', err);
     }
-    window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'sponsors' } }));
-    if (sync) syncToServer({ sponsors });
   },
 
   addSponsor(sponsor: SponsorLogo): void {
     const list = this.getSponsors();
-    list.push(sponsor);
+    list.push(normalizeSponsor(sponsor));
     this.saveSponsors(list);
   },
 
@@ -416,7 +613,7 @@ export const storageService = {
     const list = this.getSponsors();
     const idx = list.findIndex((s) => s.id === sponsor.id);
     if (idx !== -1) {
-      list[idx] = sponsor;
+      list[idx] = normalizeSponsor(sponsor);
       this.saveSponsors(list);
     }
   },
@@ -463,10 +660,25 @@ export const storageService = {
 
   // --- ANALYTICS / CALCULATIONS ---
   getStudentAttendanceSummary(studentId: string, monthYear?: string): AttendanceSummary {
-    const sessions = this.getAttendanceSessions();
+    const defaultSummary: AttendanceSummary = {
+      studentId: studentId || '',
+      totalClasses: 0,
+      presentCount: 0,
+      absentCount: 0,
+      justifiedCount: 0,
+      lateCount: 0,
+      attendanceRate: 100,
+      consecutiveAbsences: 0,
+      isAtRisk: false,
+    };
+
+    if (!studentId) return defaultSummary;
+
+    const rawSessions = this.getAttendanceSessions();
+    const sessions = Array.isArray(rawSessions) ? rawSessions : [];
     const filteredSessions = monthYear
-      ? sessions.filter((s) => s.date.startsWith(monthYear))
-      : sessions;
+      ? sessions.filter((s) => s && s.date && typeof s.date === 'string' && s.date.startsWith(monthYear))
+      : sessions.filter((s) => s && s.date);
 
     let totalClasses = 0;
     let presentCount = 0;
@@ -475,23 +687,23 @@ export const storageService = {
     let lateCount = 0;
 
     // Sort chronologically for consecutive absences
-    const sortedSessions = [...filteredSessions].sort((a, b) => a.date.localeCompare(b.date));
+    const sortedSessions = [...filteredSessions].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     let consecutiveAbsences = 0;
 
     sortedSessions.forEach((session) => {
+      if (!session || !session.entries || typeof session.entries !== 'object') return;
       const entry = session.entries[studentId];
-      if (entry) {
+      if (entry && entry.status) {
         totalClasses++;
         if (entry.status === 'presente') {
           presentCount++;
           consecutiveAbsences = 0;
         } else if (entry.status === 'atraso') {
           lateCount++;
-          presentCount++; // Late counts as present with remark
+          presentCount++;
           consecutiveAbsences = 0;
         } else if (entry.status === 'justificada') {
           justifiedCount++;
-          // doesn't increment consecutive unexcused absences
         } else if (entry.status === 'falta') {
           absentCount++;
           consecutiveAbsences++;
@@ -518,12 +730,15 @@ export const storageService = {
   // Reset database to rich original seed data
   resetAllData(): void {
     if (!isClient) return;
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
-    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(INITIAL_CLASSES));
-    const initialAttendance = generateInitialAttendanceSessions();
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS.map(normalizeStudent)));
+    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(INITIAL_CLASSES.map(normalizeClass)));
+    const initialAttendance = generateInitialAttendanceSessions().map(normalizeSession);
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(initialAttendance));
-    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(INITIAL_NOTIFICATIONS));
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(INITIAL_NOTIFICATIONS.map(normalizeNotification)));
+    localStorage.setItem(STORAGE_KEYS.SPONSORS, JSON.stringify(DEFAULT_SPONSORS.map(normalizeSponsor)));
+    localStorage.setItem(STORAGE_KEYS.SPONSOR_SIZE, '28');
     window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'reset' } }));
+    this.pushAllToSharedSync();
   },
 
   // Export full backup
@@ -580,23 +795,28 @@ export const storageService = {
 
       let changed = false;
       if (json.data.students && Array.isArray(json.data.students) && json.data.students.length > 0) {
-        this.saveStudents(json.data.students, false);
+        const normalized = json.data.students.map(normalizeStudent);
+        this.saveStudents(normalized, false);
         changed = true;
       }
       if (json.data.classes && Array.isArray(json.data.classes) && json.data.classes.length > 0) {
-        this.saveClasses(json.data.classes, false);
+        const normalized = json.data.classes.map(normalizeClass);
+        this.saveClasses(normalized, false);
         changed = true;
       }
       if (json.data.sessions && Array.isArray(json.data.sessions) && json.data.sessions.length > 0) {
-        this.saveAttendanceSessions(json.data.sessions, false);
+        const normalized = json.data.sessions.map(normalizeSession);
+        this.saveAttendanceSessions(normalized, false);
         changed = true;
       }
       if (json.data.notifications && Array.isArray(json.data.notifications) && json.data.notifications.length > 0) {
-        this.saveNotifications(json.data.notifications, false);
+        const normalized = json.data.notifications.map(normalizeNotification);
+        this.saveNotifications(normalized, false);
         changed = true;
       }
       if (json.data.sponsors && Array.isArray(json.data.sponsors) && json.data.sponsors.length > 0) {
-        this.saveSponsors(json.data.sponsors, false);
+        const normalized = json.data.sponsors.map(normalizeSponsor);
+        this.saveSponsors(normalized, false);
         changed = true;
       }
       if (typeof json.data.sponsorSize === 'number') {

@@ -718,7 +718,7 @@ export function StudentIdCardModal({
                 </div>
                 <div className="col-span-2 pt-0.5 border-t border-blue-100">
                   <span className="text-slate-500">Responsável:</span>{' '}
-                  <strong className="text-slate-900">{currentStudent.guardian.name} ({currentStudent.guardian.phone})</strong>
+                  <strong className="text-slate-900">{currentStudent.guardian?.name || 'Não informado'} ({currentStudent.guardian?.phone || 'Sem contato'})</strong>
                 </div>
               </div>
             </div>
