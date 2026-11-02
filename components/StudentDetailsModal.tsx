@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Student, VolleyballClass, DailyAttendanceSession } from '@/types/volleyball';
 import { storageService } from '@/lib/storage';
-import { createWhatsAppLink } from '@/lib/volleyballHelpers';
+import { createWhatsAppLink, normalizeCategory } from '@/lib/volleyballHelpers';
 
 interface StudentDetailsModalProps {
   isOpen: boolean;
@@ -75,7 +75,7 @@ export function StudentDetailsModal({
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">{student.fullName}</h2>
                 <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
-                  {student.category}
+                  {normalizeCategory(student.category, student.age)}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">

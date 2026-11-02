@@ -22,14 +22,28 @@ export function calculateAge(birthDateString: string): number {
 }
 
 /**
- * Determines volleyball category based on age
+ * Determines official volleyball category based on age:
+ * - 7 a 10 anos: Sub-10
+ * - 11 a 13 anos: Sub-13
+ * - 14 a 17 anos: Sub-17
  */
 export function getCategoryByAge(age: number): VolleyballCategory {
-  if (age <= 9) return 'Sub-9';
-  if (age <= 11) return 'Sub-11';
+  if (age <= 10) return 'Sub-10';
   if (age <= 13) return 'Sub-13';
-  if (age <= 15) return 'Sub-15';
   return 'Sub-17';
+}
+
+/**
+ * Normalizes any category string (including legacy values) to the 3 official categories
+ */
+export function normalizeCategory(category?: string, age?: number): VolleyballCategory {
+  if (age != null && age >= 7) {
+    return getCategoryByAge(age);
+  }
+  if (category === 'Sub-9' || category === 'Sub-10') return 'Sub-10';
+  if (category === 'Sub-11' || category === 'Sub-13') return 'Sub-13';
+  if (category === 'Sub-15' || category === 'Sub-17') return 'Sub-17';
+  return 'Sub-13';
 }
 
 /**

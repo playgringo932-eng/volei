@@ -16,6 +16,7 @@ import {
   INITIAL_NOTIFICATIONS,
 } from './mockData';
 import { DEFAULT_SPONSORS } from './sponsorPresets';
+import { normalizeCategory } from './volleyballHelpers';
 
 const STORAGE_KEYS = {
   STUDENTS: 'voleipro_students_v1',
@@ -106,7 +107,7 @@ export function normalizeStudent(raw: any): Student {
   const birthDate = String(raw.birthDate || raw.birth_date || raw.data_nascimento || '2012-01-01');
   const age = Number(raw.age) || 12;
   const gender = String(raw.gender || raw.genero || 'Masculino') as Student['gender'];
-  const category = String(raw.category || raw.categoria || 'Sub-15') as Student['category'];
+  const category = normalizeCategory(raw.category || raw.categoria, age) as Student['category'];
   const preferredPosition = String(raw.preferredPosition || raw.preferred_position || raw.posicao || 'Ponteiro(a)') as Student['preferredPosition'];
   const level = String(raw.level || raw.nivel || 'Iniciante') as Student['level'];
   const heightCm = raw.heightCm != null ? Number(raw.heightCm) : (raw.height_cm != null ? Number(raw.height_cm) : undefined);
@@ -162,10 +163,20 @@ export function normalizeClass(raw: any): VolleyballClass {
     days = ['Segunda', 'Quarta'];
   }
 
+  const minAge = Number(raw.minAge || raw.min_age) || 7;
+  const maxAge = Number(raw.maxAge || raw.max_age) || 17;
+  let categoryRaw = raw.category || raw.categoria;
+  if (!categoryRaw || categoryRaw === 'Sub-9' || categoryRaw === 'Sub-11' || categoryRaw === 'Sub-15' || categoryRaw === 'Geral') {
+    if (maxAge <= 10) categoryRaw = 'Sub-10';
+    else if (maxAge <= 13) categoryRaw = 'Sub-13';
+    else categoryRaw = 'Sub-17';
+  }
+  const category = normalizeCategory(categoryRaw) as VolleyballClass['category'];
+
   return {
     id: String(raw.id || `c_${Math.random().toString(36).substring(2, 9)}`),
     name: String(raw.name || raw.nome || 'Turma'),
-    category: (raw.category || raw.categoria || 'Sub-15') as VolleyballClass['category'],
+    category,
     shift: (raw.shift || raw.turno || 'Tarde') as VolleyballClass['shift'],
     startTime: String(raw.startTime || raw.start_time || '14:00'),
     endTime: String(raw.endTime || raw.end_time || '15:30'),
@@ -173,8 +184,8 @@ export function normalizeClass(raw: any): VolleyballClass {
     instructorName: String(raw.instructorName || raw.instructor_name || 'Prof. Responsável'),
     court: String(raw.court || raw.quadra || 'Quadra Principal'),
     maxCapacity: Number(raw.maxCapacity || raw.max_capacity) || 30,
-    minAge: Number(raw.minAge || raw.min_age) || 7,
-    maxAge: Number(raw.maxAge || raw.max_age) || 17,
+    minAge,
+    maxAge,
     colorTag: raw.colorTag || raw.color_tag || 'blue',
   };
 }

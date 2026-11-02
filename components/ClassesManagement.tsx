@@ -13,6 +13,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { VolleyballClass, Student, ShiftType, WeekDay, VolleyballCategory } from '@/types/volleyball';
+import { normalizeCategory } from '@/lib/volleyballHelpers';
 
 interface ClassesManagementProps {
   classes: VolleyballClass[];
@@ -36,6 +37,7 @@ export function ClassesManagement({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<VolleyballClass | null>(null);
   const [classPendingDelete, setClassPendingDelete] = useState<VolleyballClass | null>(null);
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'all' | 'Sub-10' | 'Sub-13' | 'Sub-17'>('all');
 
   const [name, setName] = useState('');
   const [shift, setShift] = useState<ShiftType>('Manhã');
@@ -44,10 +46,24 @@ export function ClassesManagement({
   const [daysOfWeek, setDaysOfWeek] = useState<WeekDay[]>(['Segunda', 'Quarta', 'Sexta']);
   const [court, setCourt] = useState('Quadra Central 1');
   const [instructorName, setInstructorName] = useState('Prof. Carlos Eduardo');
-  const [maxCapacity, setMaxCapacity] = useState(16);
-  const [category, setCategory] = useState<VolleyballCategory>('Sub-11');
+  const [maxCapacity, setMaxCapacity] = useState(18);
+  const [category, setCategory] = useState<VolleyballCategory>('Sub-10');
   const [minAge, setMinAge] = useState(7);
-  const [maxAge, setMaxAge] = useState(11);
+  const [maxAge, setMaxAge] = useState(10);
+
+  const handleCategoryChange = (newCat: VolleyballCategory) => {
+    setCategory(newCat);
+    if (newCat === 'Sub-10') {
+      setMinAge(7);
+      setMaxAge(10);
+    } else if (newCat === 'Sub-13') {
+      setMinAge(11);
+      setMaxAge(13);
+    } else if (newCat === 'Sub-17') {
+      setMinAge(14);
+      setMaxAge(17);
+    }
+  };
 
   const openNewModal = () => {
     setEditingClass(null);
@@ -59,9 +75,9 @@ export function ClassesManagement({
     setCourt('Quadra Central 1');
     setInstructorName('Prof. Carlos Eduardo');
     setMaxCapacity(18);
-    setCategory('Sub-13');
-    setMinAge(11);
-    setMaxAge(13);
+    setCategory('Sub-10');
+    setMinAge(7);
+    setMaxAge(10);
     setIsModalOpen(true);
   };
 
@@ -75,9 +91,10 @@ export function ClassesManagement({
     setCourt(cls.court);
     setInstructorName(cls.instructorName);
     setMaxCapacity(cls.maxCapacity);
-    setCategory(cls.category);
-    setMinAge(cls.minAge);
-    setMaxAge(cls.maxAge);
+    const cat = normalizeCategory(cls.category, cls.maxAge);
+    setCategory(cat);
+    setMinAge(cls.minAge || (cat === 'Sub-10' ? 7 : cat === 'Sub-13' ? 11 : 14));
+    setMaxAge(cls.maxAge || (cat === 'Sub-10' ? 10 : cat === 'Sub-13' ? 13 : 17));
     setIsModalOpen(true);
   };
 
@@ -121,6 +138,21 @@ export function ClassesManagement({
 
   const shifts: ShiftType[] = ['Manhã', 'Tarde', 'Noite'];
 
+  // Filter classes by selected Sub category
+  const filteredClasses = classes.filter((c) => {
+    if (selectedCategoryTab === 'all') return true;
+    return normalizeCategory(c.category, c.maxAge) === selectedCategoryTab;
+  });
+
+  // Stats for the 3 official subs
+  const sub10Classes = classes.filter((c) => normalizeCategory(c.category, c.maxAge) === 'Sub-10');
+  const sub13Classes = classes.filter((c) => normalizeCategory(c.category, c.maxAge) === 'Sub-13');
+  const sub17Classes = classes.filter((c) => normalizeCategory(c.category, c.maxAge) === 'Sub-17');
+
+  const sub10Students = students.filter((s) => s.status === 'Ativo' && normalizeCategory(s.category, s.age) === 'Sub-10');
+  const sub13Students = students.filter((s) => s.status === 'Ativo' && normalizeCategory(s.category, s.age) === 'Sub-13');
+  const sub17Students = students.filter((s) => s.status === 'Ativo' && normalizeCategory(s.category, s.age) === 'Sub-17');
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -128,26 +160,153 @@ export function ClassesManagement({
         <div>
           <div className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-blue-700" />
-            <h2 className="text-lg font-bold text-slate-900">Grade de Turmas, Turnos e Horários</h2>
+            <h2 className="text-lg font-bold text-slate-900">Grade de Turmas, Turnos e Categorias</h2>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Horários de treino, instrutores responsáveis, quadras e lotação por turma
+            Divisão oficial dos subs: <strong>Sub-10 (07 a 10 anos)</strong>, <strong>Sub-13 (11 a 13 anos)</strong> e <strong>Sub-17 (14 a 17 anos)</strong>
           </p>
         </div>
 
         <button
           onClick={openNewModal}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs hover:shadow transition-all active:scale-95 self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs hover:shadow transition-all active:scale-95 self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>Nova Turma de Vôlei</span>
         </button>
       </div>
 
+      {/* Official Subs Categorization Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        {/* Sub-10 */}
+        <div
+          onClick={() => setSelectedCategoryTab(selectedCategoryTab === 'Sub-10' ? 'all' : 'Sub-10')}
+          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+            selectedCategoryTab === 'Sub-10'
+              ? 'bg-emerald-50 border-emerald-500 shadow-md ring-2 ring-emerald-400'
+              : 'bg-white border-slate-200 hover:border-emerald-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+              Sub-10
+            </span>
+            <span className="text-[11px] font-bold text-slate-500">07 a 10 anos</span>
+          </div>
+          <div className="mt-2.5">
+            <h4 className="font-extrabold text-slate-900 text-sm">Iniciação & Fundamentos</h4>
+            <div className="text-xs text-slate-600 mt-1 flex items-center gap-2">
+              <span><strong>{sub10Classes.length}</strong> {sub10Classes.length === 1 ? 'turma' : 'turmas'}</span>
+              <span>•</span>
+              <span className="text-emerald-700 font-bold">{sub10Students.length} atletas inscritos</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sub-13 */}
+        <div
+          onClick={() => setSelectedCategoryTab(selectedCategoryTab === 'Sub-13' ? 'all' : 'Sub-13')}
+          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+            selectedCategoryTab === 'Sub-13'
+              ? 'bg-blue-50 border-blue-600 shadow-md ring-2 ring-blue-400'
+              : 'bg-white border-slate-200 hover:border-blue-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-100 text-blue-800 border border-blue-300">
+              Sub-13
+            </span>
+            <span className="text-[11px] font-bold text-slate-500">11 a 13 anos</span>
+          </div>
+          <div className="mt-2.5">
+            <h4 className="font-extrabold text-slate-900 text-sm">Formação Esportiva</h4>
+            <div className="text-xs text-slate-600 mt-1 flex items-center gap-2">
+              <span><strong>{sub13Classes.length}</strong> {sub13Classes.length === 1 ? 'turma' : 'turmas'}</span>
+              <span>•</span>
+              <span className="text-blue-700 font-bold">{sub13Students.length} atletas inscritos</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sub-17 */}
+        <div
+          onClick={() => setSelectedCategoryTab(selectedCategoryTab === 'Sub-17' ? 'all' : 'Sub-17')}
+          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+            selectedCategoryTab === 'Sub-17'
+              ? 'bg-indigo-50 border-indigo-600 shadow-md ring-2 ring-indigo-400'
+              : 'bg-white border-slate-200 hover:border-indigo-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-100 text-indigo-800 border border-indigo-300">
+              Sub-17
+            </span>
+            <span className="text-[11px] font-bold text-slate-500">14 a 17 anos</span>
+          </div>
+          <div className="mt-2.5">
+            <h4 className="font-extrabold text-slate-900 text-sm">Juvenil & Competição</h4>
+            <div className="text-xs text-slate-600 mt-1 flex items-center gap-2">
+              <span><strong>{sub17Classes.length}</strong> {sub17Classes.length === 1 ? 'turma' : 'turmas'}</span>
+              <span>•</span>
+              <span className="text-indigo-700 font-bold">{sub17Students.length} atletas inscritos</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Category filter tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-bold text-slate-600">Filtrar por Categoria:</span>
+        <button
+          type="button"
+          onClick={() => setSelectedCategoryTab('all')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            selectedCategoryTab === 'all'
+              ? 'bg-blue-700 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+          }`}
+        >
+          Todas as Turmas ({classes.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedCategoryTab('Sub-10')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            selectedCategoryTab === 'Sub-10'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+          }`}
+        >
+          Sub-10 (07 a 10 anos)
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedCategoryTab('Sub-13')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            selectedCategoryTab === 'Sub-13'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
+          }`}
+        >
+          Sub-13 (11 a 13 anos)
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedCategoryTab('Sub-17')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            selectedCategoryTab === 'Sub-17'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-200'
+          }`}
+        >
+          Sub-17 (14 a 17 anos)
+        </button>
+      </div>
+
       {/* Shifts Breakdown */}
       <div className="space-y-8">
         {shifts.map((shiftName) => {
-          const shiftClasses = classes.filter((c) => c.shift === shiftName);
+          const shiftClasses = filteredClasses.filter((c) => c.shift === shiftName);
 
           return (
             <div key={shiftName} className="space-y-3">
@@ -168,7 +327,7 @@ export function ClassesManagement({
 
               {shiftClasses.length === 0 ? (
                 <div className="p-6 bg-white border border-slate-200 rounded-2xl text-xs text-slate-400 text-center shadow-xs">
-                  Nenhuma turma cadastrada no turno da {shiftName.toLowerCase()}.
+                  Nenhuma turma {selectedCategoryTab !== 'all' ? `na categoria ${selectedCategoryTab}` : ''} cadastrada no turno da {shiftName.toLowerCase()}.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -177,6 +336,13 @@ export function ClassesManagement({
                       (s) => s.classId === cls.id && s.status === 'Ativo'
                     );
                     const occupancy = Math.round((enrolledStudents.length / cls.maxCapacity) * 100);
+                    const normalizedCat = normalizeCategory(cls.category, cls.maxAge);
+                    const catBadgeStyle =
+                      normalizedCat === 'Sub-10'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : normalizedCat === 'Sub-13'
+                        ? 'bg-blue-50 text-blue-800 border-blue-300'
+                        : 'bg-indigo-50 text-indigo-800 border-indigo-300';
 
                     return (
                       <div
@@ -194,8 +360,8 @@ export function ClassesManagement({
                                 {cls.daysOfWeek.join(' • ')}
                               </span>
                             </div>
-                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60 shrink-0">
-                              {cls.category} ({cls.minAge}-{cls.maxAge} anos)
+                            <span className={`px-2.5 py-0.5 rounded text-[11px] font-extrabold border shrink-0 ${catBadgeStyle}`}>
+                              {normalizedCat} ({cls.minAge}-{cls.maxAge} anos)
                             </span>
                           </div>
 
@@ -324,17 +490,15 @@ export function ClassesManagement({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Categoria Principal</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Categoria Principal do Sub *</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as VolleyballCategory)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
+                    onChange={(e) => handleCategoryChange(e.target.value as VolleyballCategory)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                   >
-                    <option value="Sub-9">Sub-9 (7 a 9 anos)</option>
-                    <option value="Sub-11">Sub-11 (10 e 11 anos)</option>
-                    <option value="Sub-13">Sub-13 (12 e 13 anos)</option>
-                    <option value="Sub-15">Sub-15 (14 e 15 anos)</option>
-                    <option value="Sub-17">Sub-17 (16 e 17 anos)</option>
+                    <option value="Sub-10">Sub-10 (07 a 10 anos) — Iniciação</option>
+                    <option value="Sub-13">Sub-13 (11 a 13 anos) — Formação</option>
+                    <option value="Sub-17">Sub-17 (14 a 17 anos) — Juvenil / Competição</option>
                   </select>
                 </div>
               </div>

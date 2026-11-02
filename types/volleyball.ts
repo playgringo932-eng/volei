@@ -2,7 +2,39 @@ export type ShiftType = 'Manhã' | 'Tarde' | 'Noite';
 
 export type WeekDay = 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado';
 
-export type VolleyballCategory = 'Sub-9' | 'Sub-11' | 'Sub-13' | 'Sub-15' | 'Sub-17';
+export type VolleyballCategory = 'Sub-10' | 'Sub-13' | 'Sub-17' | 'Sub-9' | 'Sub-11' | 'Sub-15';
+
+export interface CategoryDefinition {
+  category: 'Sub-10' | 'Sub-13' | 'Sub-17';
+  label: string;
+  minAge: number;
+  maxAge: number;
+  description: string;
+}
+
+export const OFFICIAL_CATEGORIES: CategoryDefinition[] = [
+  {
+    category: 'Sub-10',
+    label: 'Sub-10 (07 a 10 anos)',
+    minAge: 7,
+    maxAge: 10,
+    description: 'Iniciação motora, manchete, toque e fundamentos básicos',
+  },
+  {
+    category: 'Sub-13',
+    label: 'Sub-13 (11 a 13 anos)',
+    minAge: 11,
+    maxAge: 13,
+    description: 'Formação esportiva, posicionamento em quadra e saque',
+  },
+  {
+    category: 'Sub-17',
+    label: 'Sub-17 (14 a 17 anos)',
+    minAge: 14,
+    maxAge: 17,
+    description: 'Aperfeiçoamento tático, especialização de posições e competição',
+  },
+];
 
 export type VolleyballPosition = 
   | 'Levantador(a)' 

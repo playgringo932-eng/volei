@@ -23,7 +23,7 @@ import {
 import { Student, VolleyballClass, EnrollmentStatus } from '@/types/volleyball';
 import { storageService } from '@/lib/storage';
 import { exportStudentsToExcel } from '@/lib/excelExport';
-import { createWhatsAppLink } from '@/lib/volleyballHelpers';
+import { createWhatsAppLink, normalizeCategory } from '@/lib/volleyballHelpers';
 import { getAthletePhoto } from '@/lib/avatarHelpers';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
@@ -98,8 +98,9 @@ export function StudentsManagement({
         if (!cls || cls.shift !== selectedShiftFilter) return false;
       }
 
-      if (selectedCategoryFilter !== 'all' && s.category !== selectedCategoryFilter) {
-        return false;
+      if (selectedCategoryFilter !== 'all') {
+        const cat = normalizeCategory(s.category, s.age);
+        if (cat !== selectedCategoryFilter) return false;
       }
 
       if (selectedRiskFilter !== 'all') {
@@ -294,18 +295,16 @@ export function StudentsManagement({
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Categoria (Idades 07-17)</label>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Categoria Principal (07-17 anos)</label>
               <select
                 value={selectedCategoryFilter}
                 onChange={(e) => setSelectedCategoryFilter(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-600 font-medium"
               >
                 <option value="all">Todas as Categorias</option>
-                <option value="Sub-9">Sub-9 (7 a 9 anos)</option>
-                <option value="Sub-11">Sub-11 (10 e 11 anos)</option>
-                <option value="Sub-13">Sub-13 (12 e 13 anos)</option>
-                <option value="Sub-15">Sub-15 (14 e 15 anos)</option>
-                <option value="Sub-17">Sub-17 (16 e 17 anos)</option>
+                <option value="Sub-10">Sub-10 (07 a 10 anos)</option>
+                <option value="Sub-13">Sub-13 (11 a 13 anos)</option>
+                <option value="Sub-17">Sub-17 (14 a 17 anos)</option>
               </select>
             </div>
 
@@ -415,7 +414,7 @@ export function StudentsManagement({
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-slate-900">{student.age} anos</span>
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-200">
-                              {student.category}
+                              {normalizeCategory(student.category, student.age)}
                             </span>
                           </div>
                           <span className="text-[10px] text-slate-500 block">
@@ -604,7 +603,7 @@ export function StudentsManagement({
                       </div>
                     </div>
                     <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-900 border border-blue-200">
-                      {student.category}
+                      {normalizeCategory(student.category, student.age)}
                     </span>
                   </div>
 

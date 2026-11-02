@@ -29,6 +29,7 @@ import { getAthletePhoto, readFileAsBase64 } from '@/lib/avatarHelpers';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import { storageService } from '@/lib/storage';
 import { SponsorsManagerModal } from '@/components/SponsorsManagerModal';
+import { normalizeCategory } from '@/lib/volleyballHelpers';
 
 /**
  * Builds compact, high-readability JSON QR payload.
@@ -428,7 +429,7 @@ export function StudentIdCardModal({
                             </div>
                           </div>
                           <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-white text-blue-800 rounded border border-blue-200">
-                            {st.category}
+                            {normalizeCategory(st.category, st.age)}
                           </span>
                         </div>
 
@@ -710,7 +711,7 @@ export function StudentIdCardModal({
                 </div>
                 <div>
                   <span className="text-slate-500">Categoria:</span>{' '}
-                  <strong className="text-blue-900">{currentStudent.category} ({currentStudent.age} anos)</strong>
+                  <strong className="text-blue-900">{normalizeCategory(currentStudent.category, currentStudent.age)} ({currentStudent.age} anos)</strong>
                 </div>
                 <div>
                   <span className="text-slate-500">Posição:</span>{' '}
