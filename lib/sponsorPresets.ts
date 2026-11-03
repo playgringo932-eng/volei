@@ -2,6 +2,13 @@ import { SponsorLogo } from '@/types/volleyball';
 
 export const DEFAULT_SPONSORS: SponsorLogo[] = [
   {
+    id: 'sponsor-hs04',
+    name: 'HS04 Desenvolvimento Web',
+    category: 'Tecnologia & Desenvolvimento Web',
+    isActive: true,
+    logoUrl: '/assets/aistudio/Logo_HS04_de_desenvolvimento_web_premium_6a1fee95.png',
+  },
+  {
     id: 'sponsor-penalty',
     name: 'Penalty Esportes',
     category: 'Material Esportivo Oficial',
@@ -39,14 +46,9 @@ export const DEFAULT_SPONSORS: SponsorLogo[] = [
   },
   {
     id: 'sponsor-prefeitura',
-    name: 'Secretaria de Esportes',
-    category: 'Apoio Institucional',
-    isActive: false,
-    logoUrl: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 50" width="160" height="50">
-      <rect width="160" height="50" rx="8" fill="%231E3A8A"/>
-      <polygon points="24,15 31,21 31,31 24,35 17,31 17,21" fill="%23FBBF24"/>
-      <text x="42" y="24" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="12" fill="%23FFFFFF">SEC. ESPORTES</text>
-      <text x="42" y="36" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="9" fill="%2393C5FD">INCENTIVO JOVEM</text>
-    </svg>`,
+    name: 'Sec. Municipal de Esportes - Araçariguama',
+    category: 'Realização Institucional',
+    isActive: true,
+    logoUrl: '/assets/aistudio/WhatsApp_Image_2026-11-03_at_11.29.13_1739d5bf.jpeg',
   },
 ];

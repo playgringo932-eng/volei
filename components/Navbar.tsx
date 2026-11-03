@@ -18,7 +18,11 @@ import {
   RefreshCw,
   CloudUpload,
   Settings,
+  LogOut,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
+import { AdminUser } from '@/lib/authService';
 
 interface NavbarProps {
   currentTab: 'admin' | 'instructor' | 'reports' | 'notifications' | 'classes';
@@ -32,6 +36,9 @@ interface NavbarProps {
   isCloudConnected?: boolean;
   totalStudents: number;
   activeStudents: number;
+  currentUser?: AdminUser | null;
+  onLogout?: () => void;
+  onOpenChangePassword?: () => void;
 }
 
 export function Navbar({
@@ -46,6 +53,9 @@ export function Navbar({
   isCloudConnected = false,
   totalStudents,
   activeStudents,
+  currentUser,
+  onLogout,
+  onOpenChangePassword,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -84,10 +94,15 @@ export function Navbar({
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
       <div className="w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-18 gap-3 xl:gap-4">
-          {/* Brand Identity - Clean Blue & White */}
+          {/* Brand Identity - Official Secretaria de Esportes Araçariguama */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-blue-700 flex items-center justify-center shadow-sm text-white font-black shrink-0">
-              <Trophy className="w-5 h-5 text-white" />
+            <div className="h-11 sm:h-12 w-auto max-w-[130px] sm:max-w-[155px] flex items-center justify-center overflow-hidden rounded-xl bg-white p-0.5 border border-slate-200 shadow-xs">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/assets/aistudio/WhatsApp_Image_2026-11-03_at_11.29.13_1739d5bf.jpeg"
+                alt="Secretaria Municipal de Esportes, Lazer e Eventos - Araçariguama-SP"
+                className="h-full w-auto object-contain"
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -98,8 +113,8 @@ export function Navbar({
                   07 a 17 Anos
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden xl:block font-medium">
-                Gestão Oficial da Academia de Vôlei Juvenil
+              <p className="text-[11px] text-slate-500 hidden xl:block font-medium">
+                Secretaria Municipal de Esportes, Lazer e Eventos • Araçariguama-SP
               </p>
             </div>
           </div>
@@ -195,6 +210,27 @@ export function Navbar({
             >
               <Database className="w-4 h-4" />
             </button>
+
+            {onOpenChangePassword && (
+              <button
+                onClick={onOpenChangePassword}
+                title="Alterar Senha do Administrador"
+                className="hidden sm:flex p-2.5 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 transition-colors cursor-pointer"
+              >
+                <KeyRound className="w-4 h-4" />
+              </button>
+            )}
+
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title="Sair / Bloquear Sistema"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 hover:border-rose-600 transition-all cursor-pointer text-xs font-bold shadow-2xs"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sair</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenNewStudent}
@@ -306,6 +342,38 @@ export function Navbar({
             </div>
             <span className="text-xs text-slate-400">JSON</span>
           </button>
+
+          {onOpenChangePassword && (
+            <button
+              onClick={() => {
+                onOpenChangePassword();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-t border-slate-100"
+            >
+              <div className="flex items-center gap-3">
+                <KeyRound className="w-5 h-5 text-slate-500" />
+                <span>Alterar Senha do Admin</span>
+              </div>
+              <span className="text-xs text-blue-600 font-bold">Segurança</span>
+            </button>
+          )}
+
+          {onLogout && (
+            <button
+              onClick={() => {
+                onLogout();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-rose-100 mt-1"
+            >
+              <div className="flex items-center gap-3">
+                <LogOut className="w-5 h-5 text-rose-500" />
+                <span>Sair da Administração</span>
+              </div>
+              <span className="text-xs text-rose-400 font-bold">Bloquear</span>
+            </button>
+          )}
         </div>
       )}
 

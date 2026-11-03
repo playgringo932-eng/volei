@@ -22,6 +22,9 @@ import { DatabaseBackupModal } from '@/components/DatabaseBackupModal';
 import { QrCodeScannerModal } from '@/components/QrCodeScannerModal';
 import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { SupabaseConnectionModal } from '@/components/SupabaseConnectionModal';
+import { AdminLoginScreen } from '@/components/AdminLoginScreen';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
+import { authService, AdminUser } from '@/lib/authService';
 import {
   isSupabaseConfigured,
   saveAllToSupabase,
@@ -62,6 +65,18 @@ export function VolleyballAcademyMain() {
   const [isSavingData, setIsSavingData] = useState(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isCloudConnected, setIsCloudConnected] = useState(() => isSupabaseConfigured());
+
+  // Estado de Autenticação e Segurança do Administrador
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => authService.isAuthenticated());
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() => authService.getCurrentUser());
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    showToast('Sessão administrativa encerrada com sucesso.', 'success');
+  };
 
   // Custom Deletion Confirmation State
   const [studentPendingDelete, setStudentPendingDelete] = useState<Student | null>(null);
@@ -333,6 +348,19 @@ export function VolleyballAcademyMain() {
 
   const activeStudentsCount = students.filter((s) => s.status === 'Ativo').length;
 
+  // Se não estiver autenticado, exibe a Tela Oficial de Login Administrativo
+  if (!isAuthenticated) {
+    return (
+      <AdminLoginScreen
+        onLoginSuccess={(user) => {
+          setIsAuthenticated(true);
+          setCurrentUser(user);
+          showToast(`✓ Acesso autorizado! Bem-vindo(a) à Coordenação.`, 'success');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans" suppressHydrationWarning>
       {/* Top Navbar */}
@@ -348,6 +376,9 @@ export function VolleyballAcademyMain() {
         isCloudConnected={isCloudConnected}
         totalStudents={students.length}
         activeStudents={activeStudentsCount}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
       />
 
       {/* Main Container */}
@@ -416,11 +447,15 @@ export function VolleyballAcademyMain() {
 
       {/* Footer */}
       <footer className="mt-auto border-t-2 border-blue-200/80 bg-white py-4 text-center text-xs text-slate-500">
-        <div className="w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            <strong className="text-blue-900 font-bold">VoleiAraça</strong> — Sistema Oficial de Gestão de Vôlei Juvenil (Faixa Etária: 07 a 17 anos)
+        <div className="w-full max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-left">
+            <strong className="text-blue-900 font-bold">VoleiAraça</strong> — Sistema Oficial desenvolvido por <strong className="text-slate-900 font-bold">Hian Salles</strong>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              Matrículas & Frequência (07 a 17 anos) • Carteirinhas com QR Code • Exportação Excel
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-slate-600 font-medium">
+
+          <div className="flex items-center gap-4 text-slate-600 font-medium text-[11px]">
             <span>Matrículas & Frequência</span>
             <span>•</span>
             <span>Carteirinhas de Atleta</span>
@@ -520,6 +555,15 @@ export function VolleyballAcademyMain() {
           setIsCloudConnected(true);
           reloadData();
           showToast('✓ Dados sincronizados com o Supabase com sucesso!', 'success');
+        }}
+      />
+
+      {/* Modal: Alterar Senha do Administrador */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onPasswordChanged={() => {
+          showToast('✓ Senha do administrador alterada com sucesso!', 'success');
         }}
       />
 

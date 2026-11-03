@@ -415,16 +415,21 @@ export function StudentIdCardModal({
 
                         {/* Header Frente */}
                         <div className="bg-gradient-to-r from-blue-800 to-blue-700 text-white p-3.5 border-b-2 border-blue-900 relative z-10 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-white text-blue-800 flex items-center justify-center font-black text-sm">
-                              VA
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-12 bg-white rounded-lg p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src="/assets/aistudio/WhatsApp_Image_2026-11-03_at_11.29.13_1739d5bf.jpeg"
+                                alt="Secretaria Municipal de Esportes"
+                                className="h-full w-auto object-contain"
+                              />
                             </div>
                             <div>
                               <div className="text-[11px] font-extrabold tracking-wider uppercase leading-tight">
-                                Academia VoleiAraça
+                                VoleiAraça • Araçariguama
                               </div>
                               <div className="text-[9px] text-blue-200 uppercase font-semibold">
-                                Federação de Voleibol Juvenil
+                                Secretaria de Esportes, Lazer e Eventos
                               </div>
                             </div>
                           </div>
