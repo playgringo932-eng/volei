@@ -23,7 +23,7 @@ export function ChangePasswordModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
 
@@ -32,7 +32,7 @@ export function ChangePasswordModal({
       return;
     }
 
-    const res = authService.changePassword(currentPassword, newPassword);
+    const res = await authService.changePassword(currentPassword, newPassword);
     if (res.success) {
       setMessage({ text: res.message, type: 'success' });
       setTimeout(() => {

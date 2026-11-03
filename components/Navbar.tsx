@@ -21,6 +21,7 @@ import {
   LogOut,
   KeyRound,
   ShieldCheck,
+  Share2,
 } from 'lucide-react';
 import { AdminUser } from '@/lib/authService';
 
@@ -30,6 +31,7 @@ interface NavbarProps {
   onOpenNewStudent: () => void;
   onOpenBackupModal: () => void;
   onOpenQrScanner?: () => void;
+  onOpenEnrollmentLink?: () => void;
   onSaveData?: () => void;
   isSaving?: boolean;
   onOpenSupabaseModal?: () => void;
@@ -47,6 +49,7 @@ export function Navbar({
   onOpenNewStudent,
   onOpenBackupModal,
   onOpenQrScanner,
+  onOpenEnrollmentLink,
   onSaveData,
   isSaving = false,
   onOpenSupabaseModal,
@@ -232,6 +235,20 @@ export function Navbar({
               </button>
             )}
 
+            {onOpenEnrollmentLink && (
+              <button
+                onClick={onOpenEnrollmentLink}
+                title="Compartilhar Link de Inscrição Oficial com os Pais"
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-2 border-indigo-200 hover:border-indigo-300 font-black text-xs shadow-2xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5 text-indigo-700 stroke-[2.5]" />
+                <span className="hidden sm:inline">Link de Inscrição</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-800 hidden md:inline">
+                  Pais
+                </span>
+              </button>
+            )}
+
             <button
               onClick={onOpenNewStudent}
               className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm hover:shadow transition-all active:scale-95"
@@ -293,6 +310,23 @@ export function Navbar({
               </div>
               <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-blue-600 text-white">
                 Ao Vivo
+              </span>
+            </button>
+          )}
+          {onOpenEnrollmentLink && (
+            <button
+              onClick={() => {
+                onOpenEnrollmentLink();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold bg-indigo-50 text-indigo-900 border border-indigo-200 transition-colors mb-2 cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <Share2 className="w-4 h-4 text-indigo-700" />
+                <span>Link de Inscrição para os Pais</span>
+              </div>
+              <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-indigo-600 text-white">
+                Compartilhar
               </span>
             </button>
           )}

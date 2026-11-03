@@ -90,6 +90,8 @@ export function formatBRPhone(value: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+export const formatBrazilianPhone = formatBRPhone;
+
 /**
  * Clean phone to pure international number for WhatsApp link
  */

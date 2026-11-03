@@ -24,6 +24,7 @@ import { ConfirmDeleteModal } from '@/components/ConfirmDeleteModal';
 import { SupabaseConnectionModal } from '@/components/SupabaseConnectionModal';
 import { AdminLoginScreen } from '@/components/AdminLoginScreen';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
+import { EnrollmentLinkModal } from '@/components/EnrollmentLinkModal';
 import { authService, AdminUser } from '@/lib/authService';
 import {
   isSupabaseConfigured,
@@ -56,6 +57,7 @@ export function VolleyballAcademyMain() {
 
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [isEnrollmentLinkOpen, setIsEnrollmentLinkOpen] = useState(false);
   const [scannerInitialClassId, setScannerInitialClassId] = useState<string | undefined>();
   const [scannerInitialDate, setScannerInitialDate] = useState<string | undefined>();
   const [scannerInitialCode, setScannerInitialCode] = useState<string | undefined>();
@@ -379,6 +381,7 @@ export function VolleyballAcademyMain() {
         currentUser={currentUser}
         onLogout={handleLogout}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+        onOpenEnrollmentLink={() => setIsEnrollmentLinkOpen(true)}
       />
 
       {/* Main Container */}
@@ -397,6 +400,7 @@ export function VolleyballAcademyMain() {
             onBatchPrintIdCards={handleBatchPrintIdCards}
             onQuickUpdateStatus={handleQuickUpdateStatus}
             onOpenQrScanner={(reg) => handleOpenQrScanner(undefined, undefined, reg)}
+            onOpenEnrollmentLink={() => setIsEnrollmentLinkOpen(true)}
           />
         )}
 
@@ -565,6 +569,12 @@ export function VolleyballAcademyMain() {
         onPasswordChanged={() => {
           showToast('✓ Senha do administrador alterada com sucesso!', 'success');
         }}
+      />
+
+      {/* Modal: Link de Inscrição Oficial para Pais & Atletas */}
+      <EnrollmentLinkModal
+        isOpen={isEnrollmentLinkOpen}
+        onClose={() => setIsEnrollmentLinkOpen(false)}
       />
 
       {/* Floating System Toast Alert */}

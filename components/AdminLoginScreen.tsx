@@ -41,14 +41,19 @@ export function AdminLoginScreen({ onLoginSuccess }: AdminLoginScreenProps) {
 
   const logoSrc = '/assets/aistudio/WhatsApp_Image_2026-11-03_at_11.29.13_1739d5bf.jpeg';
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Sincroniza a senha do administrador e os dados com o servidor imediatamente ao abrir em qualquer dispositivo
+  React.useEffect(() => {
+    authService.syncWithServer().catch(() => {});
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setResetSuccessMessage(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      const result = authService.login(username, password, rememberMe);
+    try {
+      const result = await authService.login(username, password, rememberMe);
       setIsLoading(false);
 
       if (result.success && result.user) {
@@ -56,7 +61,10 @@ export function AdminLoginScreen({ onLoginSuccess }: AdminLoginScreenProps) {
       } else {
         setErrorMessage(result.message);
       }
-    }, 350);
+    } catch {
+      setIsLoading(false);
+      setErrorMessage('Erro ao autenticar. Verifique sua conexão e tente novamente.');
+    }
   };
 
   const handleOpenRecovery = () => {
@@ -79,7 +87,7 @@ export function AdminLoginScreen({ onLoginSuccess }: AdminLoginScreenProps) {
     }
   };
 
-  const handleSaveNewPassword = (e: React.FormEvent) => {
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setRecoveryError(null);
 
@@ -93,7 +101,7 @@ export function AdminLoginScreen({ onLoginSuccess }: AdminLoginScreenProps) {
       return;
     }
 
-    const res = authService.resetPasswordWithPin(pinInput, newRecoveryPassword);
+    const res = await authService.resetPasswordWithPin(pinInput, newRecoveryPassword);
     if (res.success) {
       setPassword(newRecoveryPassword);
       setResetSuccessMessage('✓ Nova senha de administrador estabelecida com sucesso! Você já pode entrar.');
@@ -271,6 +279,21 @@ export function AdminLoginScreen({ onLoginSuccess }: AdminLoginScreenProps) {
               )}
             </button>
           </form>
+
+          {/* Link para Inscrição Pública de Alunos */}
+          <div className="mt-5 pt-4 border-t border-slate-200 text-center space-y-2">
+            <span className="text-[11px] font-semibold text-slate-500 block">
+              É aluno ou responsável e quer se inscrever?
+            </span>
+            <a
+              href="/inscricao"
+              className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-200" />
+              <span>Abrir Ficha de Inscrição Oficial</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
 
         {/* Institutional Footer */}

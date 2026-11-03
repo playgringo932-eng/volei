@@ -796,13 +796,30 @@ export const storageService = {
   },
 
   // Pull all synchronized data from the shared server (used by Mobile & other tabs)
-  async pullFromSharedSync(): Promise<boolean> {
+  async pullFromSharedSync(force = false): Promise<boolean> {
     if (!isClient) return false;
     try {
       const res = await fetch('/api/sync');
       if (!res.ok) return false;
       const json = await res.json();
       if (!json.data) return false;
+
+      const remoteUpdatedAt = json.data.updatedAt || json.updatedAt || '';
+      const lastPulledTs = localStorage.getItem('voleipro_last_pulled_sync_ts') || '';
+
+      const currentStudents = this.getStudents();
+      const remoteStudents = json.data.students;
+
+      const hasStudentDifferences = Array.isArray(remoteStudents) && remoteStudents.length > 0 && (
+        remoteStudents.length !== currentStudents.length ||
+        (remoteStudents[0] && currentStudents[0] && remoteStudents[0].id !== currentStudents[0].id)
+      );
+
+      const isNewer = Boolean(remoteUpdatedAt && remoteUpdatedAt !== lastPulledTs);
+
+      if (!force && !hasStudentDifferences && !isNewer) {
+        return false;
+      }
 
       let changed = false;
       if (json.data.students && Array.isArray(json.data.students) && json.data.students.length > 0) {
@@ -834,6 +851,12 @@ export const storageService = {
         this.saveSponsorSize(json.data.sponsorSize, false);
         changed = true;
       }
+
+      if (changed) {
+        localStorage.setItem('voleipro_last_pulled_sync_ts', remoteUpdatedAt || String(Date.now()));
+        window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'remote-sync' } }));
+      }
+
       return changed;
     } catch {
       return false;

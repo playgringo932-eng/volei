@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Camera,
   QrCode,
+  Share2,
 } from 'lucide-react';
 import { Student, VolleyballClass, EnrollmentStatus } from '@/types/volleyball';
 import { storageService } from '@/lib/storage';
@@ -40,6 +41,7 @@ interface StudentsManagementProps {
   onBatchPrintIdCards?: () => void;
   onQuickUpdateStatus?: (studentId: string, status: EnrollmentStatus) => void;
   onOpenQrScanner?: (studentRegistration?: string) => void;
+  onOpenEnrollmentLink?: () => void;
 }
 
 export function StudentsManagement({
@@ -54,6 +56,7 @@ export function StudentsManagement({
   onBatchPrintIdCards,
   onQuickUpdateStatus,
   onOpenQrScanner,
+  onOpenEnrollmentLink,
 }: StudentsManagementProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
@@ -226,6 +229,18 @@ export function StudentsManagement({
               <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
               <span>Exportar Excel ({filteredStudents.length})</span>
             </button>
+
+            {/* Share Enrollment Link Button */}
+            {onOpenEnrollmentLink && (
+              <button
+                onClick={onOpenEnrollmentLink}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-50 text-indigo-900 border-2 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 text-xs font-bold transition-all active:scale-95 shadow-xs cursor-pointer"
+                title="Compartilhar link de inscrição online com os pais e responsáveis"
+              >
+                <Share2 className="w-4 h-4 text-indigo-700 stroke-[2.5]" />
+                <span>Link de Inscrição</span>
+              </button>
+            )}
 
             {/* New Student Button */}
             <button

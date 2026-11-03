@@ -18,16 +18,71 @@ const DEFAULT_CREDENTIALS = {
   defaultPassword: 'admin',
 };
 
+// In-memory cache
+let inMemoryPassword = DEFAULT_CREDENTIALS.defaultPassword;
+
 export const authService = {
   /**
-   * Retrieves the stored admin password or returns the default one
+   * Retrieves the stored admin password from memory/localStorage
    */
   getStoredPassword(): string {
-    if (typeof window === 'undefined') return DEFAULT_CREDENTIALS.defaultPassword;
+    if (typeof window === 'undefined') return inMemoryPassword;
     try {
-      return localStorage.getItem(PASSWORD_STORAGE_KEY) || DEFAULT_CREDENTIALS.defaultPassword;
+      const stored = localStorage.getItem(PASSWORD_STORAGE_KEY);
+      if (stored) {
+        inMemoryPassword = stored;
+        return stored;
+      }
     } catch {
-      return DEFAULT_CREDENTIALS.defaultPassword;
+      // fallback
+    }
+    return inMemoryPassword || DEFAULT_CREDENTIALS.defaultPassword;
+  },
+
+  /**
+   * Sincroniza a senha do administrador com o servidor compartilhado
+   * para que qualquer alteração feita no PC apareça imediatamente no Celular e vice-versa
+   */
+  async syncWithServer(): Promise<string> {
+    if (typeof window === 'undefined') return inMemoryPassword;
+    try {
+      const res = await fetch('/api/sync');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.adminAuth?.password) {
+          const srvPass = String(json.adminAuth.password).trim();
+          inMemoryPassword = srvPass;
+          try {
+            localStorage.setItem(PASSWORD_STORAGE_KEY, srvPass);
+          } catch {
+            // ignore
+          }
+          return srvPass;
+        }
+      }
+    } catch (err) {
+      console.warn('Aviso: Falha ao sincronizar senha com servidor:', err);
+    }
+    return this.getStoredPassword();
+  },
+
+  /**
+   * Envia a nova senha para o servidor para que todos os dispositivos sincronizem
+   */
+  async pushPasswordToServer(newPassword: string): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminAuth: {
+            password: newPassword,
+          },
+        }),
+      });
+    } catch (err) {
+      console.warn('Aviso: Falha ao persistir senha no servidor compartilhado:', err);
     }
   },
 
@@ -61,13 +116,13 @@ export const authService = {
   },
 
   /**
-   * Logs in with username and password
+   * Logs in with username and password, with automatic server verification
    */
-  login(
+  async login(
     userInput: string,
     passwordInput: string,
     rememberMe = true
-  ): { success: boolean; message: string; user?: AdminUser } {
+  ): Promise<{ success: boolean; message: string; user?: AdminUser }> {
     const userClean = (userInput || '').trim().toLowerCase();
     const passClean = (passwordInput || '').trim();
 
@@ -78,25 +133,32 @@ export const authService = {
       return { success: false, message: 'Por favor, digite a sua senha de acesso.' };
     }
 
-    const currentPassword = this.getStoredPassword();
     const isUserValid =
       DEFAULT_CREDENTIALS.defaultUsernames.includes(userClean) ||
       userClean.includes('admin') ||
       userClean.includes('coordenacao');
 
-    const isPasswordValid = passClean === currentPassword;
-
     if (!isUserValid) {
       return {
         success: false,
-        message: 'Usuário não reconhecido. Utilize o usuário de administrador cadastrado (ex: admin).',
+        message: 'Usuário não reconhecido. Utilize o usuário de administrador (ex: admin).',
       };
+    }
+
+    // 1. Testa com a senha local atual
+    let currentPassword = this.getStoredPassword();
+    let isPasswordValid = passClean === currentPassword;
+
+    // 2. Se a senha local falhar, busca no servidor (caso tenha sido alterada em outro aparelho)
+    if (!isPasswordValid) {
+      currentPassword = await this.syncWithServer();
+      isPasswordValid = passClean === currentPassword;
     }
 
     if (!isPasswordValid) {
       return {
         success: false,
-        message: 'Senha incorreta. Verifique se o Caps Lock está ativo e tente novamente.',
+        message: 'Senha incorreta. Verifique se o Caps Lock está ativo ou utilize "Esqueci a senha?".',
       };
     }
 
@@ -138,11 +200,15 @@ export const authService = {
   /**
    * Allows the administrator to change the system password
    */
-  changePassword(
+  async changePassword(
     currentPasswordInput: string,
     newPasswordInput: string
-  ): { success: boolean; message: string } {
-    const currentPass = this.getStoredPassword();
+  ): Promise<{ success: boolean; message: string }> {
+    let currentPass = this.getStoredPassword();
+    if ((currentPasswordInput || '').trim() !== currentPass) {
+      currentPass = await this.syncWithServer();
+    }
+
     if ((currentPasswordInput || '').trim() !== currentPass) {
       return { success: false, message: 'A senha atual informada está incorreta.' };
     }
@@ -152,12 +218,17 @@ export const authService = {
       return { success: false, message: 'A nova senha deve possuir no mínimo 3 caracteres.' };
     }
 
+    inMemoryPassword = cleanNew;
     try {
       localStorage.setItem(PASSWORD_STORAGE_KEY, cleanNew);
-      return { success: true, message: 'Senha de administrador alterada com sucesso!' };
-    } catch (err) {
-      return { success: false, message: 'Falha ao gravar nova senha no dispositivo.' };
+    } catch {
+      // ignore
     }
+
+    // Persiste no servidor para sincronizar todos os dispositivos
+    await this.pushPasswordToServer(cleanNew);
+
+    return { success: true, message: 'Senha de administrador alterada com sucesso em todos os dispositivos!' };
   },
 
   /**
@@ -170,10 +241,10 @@ export const authService = {
   /**
    * Resets password to a new custom password using Master Recovery PIN 3007
    */
-  resetPasswordWithPin(
+  async resetPasswordWithPin(
     pin: string,
     newPasswordInput: string
-  ): { success: boolean; message: string } {
+  ): Promise<{ success: boolean; message: string }> {
     if (!this.validateRecoveryPin(pin)) {
       return { success: false, message: 'PIN de segurança incorreto. Acesso não autorizado.' };
     }
@@ -183,11 +254,16 @@ export const authService = {
       return { success: false, message: 'A nova senha deve possuir no mínimo 3 caracteres.' };
     }
 
+    inMemoryPassword = cleanNew;
     try {
       localStorage.setItem(PASSWORD_STORAGE_KEY, cleanNew);
-      return { success: true, message: 'Nova senha de administrador redefinida com sucesso!' };
     } catch {
-      return { success: false, message: 'Falha ao salvar a nova senha no dispositivo.' };
+      // ignore
     }
+
+    // Persiste no servidor para sincronizar todos os dispositivos
+    await this.pushPasswordToServer(cleanNew);
+
+    return { success: true, message: 'Nova senha de administrador redefinida e sincronizada com sucesso!' };
   },
 };
