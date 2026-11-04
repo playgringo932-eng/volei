@@ -98,6 +98,12 @@ export function getSupabaseServerClient(): SupabaseClient | null {
   return serverSupabaseClient;
 }
 
+export function isValidSupabaseUrl(url?: string): boolean {
+  if (!url) return false;
+  const clean = url.trim().toLowerCase();
+  return clean.startsWith('http') && !clean.includes('sb_publishable') && !clean.includes('your-project-id');
+}
+
 export function readSharedState(): SharedState {
   try {
     let raw = '';
@@ -109,10 +115,13 @@ export function readSharedState(): SharedState {
 
     if (raw) {
       const parsed = JSON.parse(raw);
+      const urlCandidate = parsed.config?.url ? normalizeSupabaseUrl(parsed.config.url) : '';
+      const keyCandidate = parsed.config?.anonKey ? String(parsed.config.anonKey).trim() : '';
+
       inMemoryState = {
         config: {
-          url: normalizeSupabaseUrl(parsed.config?.url || inMemoryState.config.url),
-          anonKey: parsed.config?.anonKey || inMemoryState.config.anonKey,
+          url: isValidSupabaseUrl(urlCandidate) ? urlCandidate : DEFAULT_SUPABASE_URL,
+          anonKey: keyCandidate && keyCandidate.length > 20 && !keyCandidate.includes('your-anon-key') ? keyCandidate : DEFAULT_SUPABASE_ANON_KEY,
         },
         adminAuth: {
           password: parsed.adminAuth?.password || inMemoryState.adminAuth.password || 'admin',
@@ -278,8 +287,8 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
         age: s.age,
         gender: s.gender,
         category: s.category,
-        preferred_position: s.preferredPosition || s.preferred_position,
-        level: s.level,
+        preferred_position: s.preferredPosition || s.preferred_position || 'Geral',
+        level: s.level || s.level || 'Iniciante',
         height_cm: s.heightCm || s.height_cm || null,
         jersey_number: s.jerseyNumber || s.jersey_number || null,
         class_id: s.classId || s.class_id || null,

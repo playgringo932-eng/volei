@@ -5,6 +5,9 @@ import {
   fetchFromSupabaseOnServer,
   saveToSupabaseOnServer,
   normalizeSupabaseUrl,
+  isValidSupabaseUrl,
+  DEFAULT_SUPABASE_URL,
+  DEFAULT_SUPABASE_ANON_KEY,
   SharedState,
 } from '@/lib/serverSharedState';
 
@@ -49,8 +52,12 @@ export async function POST(req: NextRequest) {
 
     const updatedState: SharedState = {
       config: {
-        url: body.config?.url ? normalizeSupabaseUrl(body.config.url) : current.config.url,
-        anonKey: body.config?.anonKey?.trim() ?? current.config.anonKey,
+        url: body.config?.url && isValidSupabaseUrl(body.config.url)
+          ? normalizeSupabaseUrl(body.config.url)
+          : (isValidSupabaseUrl(current.config?.url) ? current.config.url : DEFAULT_SUPABASE_URL),
+        anonKey: body.config?.anonKey && body.config.anonKey.trim().length > 20 && !body.config.anonKey.includes('your-anon-key')
+          ? body.config.anonKey.trim()
+          : (current.config?.anonKey || DEFAULT_SUPABASE_ANON_KEY),
       },
       adminAuth: {
         password: body.adminAuth?.password?.trim() ?? current.adminAuth.password,

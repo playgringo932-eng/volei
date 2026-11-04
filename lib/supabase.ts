@@ -46,10 +46,13 @@ export function normalizeSupabaseUrl(input: string): string {
  * Obtém as credenciais do Supabase (localStorage ou variáveis de ambiente)
  */
 export function getSupabaseConfig(): SupabaseConfig {
+  const fallbackUrl = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_PROJECT_URL);
+  const fallbackKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY).trim();
+
   if (typeof window === 'undefined') {
     return {
-      url: normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_PROJECT_URL),
-      anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY,
+      url: fallbackUrl,
+      anonKey: fallbackKey,
     };
   }
 
@@ -57,10 +60,25 @@ export function getSupabaseConfig(): SupabaseConfig {
     const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.url || parsed.anonKey) {
+      const urlCandidate = parsed.url ? normalizeSupabaseUrl(parsed.url) : '';
+      const keyCandidate = parsed.anonKey ? String(parsed.anonKey).trim() : '';
+
+      const isValidUrl = Boolean(
+        urlCandidate &&
+        urlCandidate.startsWith('http') &&
+        !urlCandidate.includes('sb_publishable') &&
+        !urlCandidate.includes('your-project-id')
+      );
+      const isValidKey = Boolean(
+        keyCandidate &&
+        keyCandidate.length > 20 &&
+        !keyCandidate.includes('your-anon-key')
+      );
+
+      if (isValidUrl && isValidKey) {
         return {
-          url: normalizeSupabaseUrl(parsed.url || DEFAULT_SUPABASE_PROJECT_URL),
-          anonKey: parsed.anonKey || DEFAULT_SUPABASE_ANON_KEY,
+          url: urlCandidate,
+          anonKey: keyCandidate,
         };
       }
     }
@@ -69,8 +87,8 @@ export function getSupabaseConfig(): SupabaseConfig {
   }
 
   return {
-    url: normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_PROJECT_URL),
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY,
+    url: fallbackUrl,
+    anonKey: fallbackKey,
   };
 }
 
@@ -315,8 +333,8 @@ export async function saveAllToSupabase(): Promise<{
       age: s.age,
       gender: s.gender,
       category: s.category,
-      preferred_position: s.preferredPosition,
-      level: s.level,
+      preferred_position: s.preferredPosition || 'Geral',
+      level: s.level || 'Iniciante',
       height_cm: s.heightCm || null,
       jersey_number: s.jerseyNumber || null,
       class_id: s.classId || null,
@@ -573,9 +591,9 @@ CREATE TABLE IF NOT EXISTS students (
   birth_date TEXT NOT NULL,
   age INTEGER NOT NULL CHECK (age >= 7 AND age <= 17),
   gender TEXT NOT NULL,
-  category TEXT NOT NULL,
-  preferred_position TEXT NOT NULL,
-  level TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Iniciante',
+  preferred_position TEXT DEFAULT 'Geral',
+  level TEXT DEFAULT 'Iniciante',
   height_cm NUMERIC,
   jersey_number INTEGER,
   class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,
