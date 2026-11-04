@@ -254,6 +254,38 @@ export function StudentIdCardModal({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 print:p-0 print:overflow-visible">
+          {/* Print Styles for exact 102mm x 68mm Brazilian RG standard */}
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 8mm;
+              }
+              body {
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .id-card-rg {
+                width: 102mm !important;
+                height: 68mm !important;
+                min-width: 102mm !important;
+                min-height: 68mm !important;
+                max-width: 102mm !important;
+                max-height: 68mm !important;
+                box-sizing: border-box !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+            }
+          `,
+            }}
+          />
+
           {/* Hidden File Input for Photo Upload */}
           <input
             ref={fileInputRef}
@@ -377,8 +409,8 @@ export function StudentIdCardModal({
           </div>
 
           {/* Notice of Print Demarcation Lines */}
-          <div className="text-center text-[11px] text-slate-500 font-medium print:hidden">
-            ✂️ <strong>Linhas de demarcação e corte para crachá</strong> (padrão 85mm x 54mm com QR Code de Presença) exibidas abaixo para impressão.
+          <div className="text-center text-xs text-slate-600 font-medium print:hidden bg-blue-50/80 border border-blue-200 p-2.5 rounded-xl max-w-2xl mx-auto shadow-2xs">
+            🪪 <strong>Padrão Oficial de RG Brasileiro (102 mm × 68 mm):</strong> Frente e Verso proporcionais para corte exato e plastificação em polaseal padrão de identidade.
           </div>
 
           {/* RENDER CARD(S) */}
@@ -392,31 +424,39 @@ export function StudentIdCardModal({
                   {/* Outer Demarcated Cut Frame with DOM ID for Export */}
                   <div
                     id={`id-card-frame-${st.id}`}
-                    className="p-4 sm:p-6 bg-slate-50/60 rounded-3xl border-2 border-dashed border-blue-400 max-w-3xl mx-auto shadow-sm relative"
+                    className="p-3 sm:p-5 bg-slate-50/70 rounded-2xl border-2 border-dashed border-blue-400 max-w-4xl mx-auto shadow-xs relative print:p-0 print:border-none print:bg-transparent"
                   >
                     {/* Demarcation label */}
-                    <div className="absolute -top-3 left-6 px-3 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider print:hidden">
-                      Linha de Corte da Carteirinha #{idx + 1}
+                    <div className="absolute -top-3 left-4 px-3 py-0.5 bg-blue-700 text-white text-[10px] font-black rounded-full uppercase tracking-wider print:hidden shadow-xs">
+                      Tamanho Oficial RG (102mm × 68mm) #{idx + 1}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-                      {/* ================= FRENTE DA CARTEIRINHA ================= */}
+                    <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6 print:gap-4 overflow-x-auto py-2">
+                      {/* ================= FRENTE DA CARTEIRINHA (102mm x 68mm) ================= */}
                       <div
                         id={`id-card-front-${st.id}`}
-                        className="bg-white rounded-2xl border-2 border-blue-800 shadow-md overflow-hidden flex flex-col justify-between relative min-h-[350px]"
+                        style={{
+                          width: '102mm',
+                          height: '68mm',
+                          minWidth: '102mm',
+                          minHeight: '68mm',
+                          maxWidth: '102mm',
+                          maxHeight: '68mm',
+                        }}
+                        className="id-card-rg bg-white rounded-xl border-2 border-blue-900 shadow-md overflow-hidden flex flex-col justify-between relative box-border select-none shrink-0 print:border-2 print:border-blue-900"
                       >
                         {/* Court Watermark */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.05] p-2" viewBox="0 0 200 300" preserveAspectRatio="none">
-                          <rect x="8" y="8" width="184" height="284" fill="none" stroke="#1E40AF" strokeWidth="3" />
-                          <line x1="8" y1="100" x2="192" y2="100" stroke="#1E40AF" strokeWidth="2.5" />
-                          <line x1="8" y1="200" x2="192" y2="200" stroke="#1E40AF" strokeWidth="2.5" />
-                          <line x1="8" y1="150" x2="192" y2="150" stroke="#1E40AF" strokeWidth="4" />
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.04] p-1.5" viewBox="0 0 200 133" preserveAspectRatio="none">
+                          <rect x="4" y="4" width="192" height="125" fill="none" stroke="#1E40AF" strokeWidth="2" />
+                          <line x1="4" y1="44" x2="196" y2="44" stroke="#1E40AF" strokeWidth="1.5" />
+                          <line x1="4" y1="88" x2="196" y2="88" stroke="#1E40AF" strokeWidth="1.5" />
+                          <line x1="4" y1="66" x2="196" y2="66" stroke="#1E40AF" strokeWidth="2.5" />
                         </svg>
 
-                        {/* Header Frente */}
-                        <div className="bg-gradient-to-r from-blue-800 to-blue-700 text-white p-3.5 border-b-2 border-blue-900 relative z-10 flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-12 bg-white rounded-lg p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                        {/* Header Frente (8.5mm) */}
+                        <div className="bg-gradient-to-r from-blue-950 via-blue-800 to-blue-950 text-white px-2.5 py-1.5 border-b-2 border-blue-950 relative z-10 flex items-center justify-between shrink-0">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-9 bg-white rounded-md p-0.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src="/assets/aistudio/WhatsApp_Image_2026-11-03_at_11.29.13_1739d5bf.jpeg"
@@ -425,143 +465,170 @@ export function StudentIdCardModal({
                               />
                             </div>
                             <div>
-                              <div className="text-[11px] font-extrabold tracking-wider uppercase leading-tight">
+                              <div className="text-[9.5px] font-black tracking-wider uppercase leading-tight">
                                 VoleiAraça • Araçariguama
                               </div>
-                              <div className="text-[9px] text-blue-200 uppercase font-semibold">
-                                Secretaria de Esportes, Lazer e Eventos
+                              <div className="text-[7px] text-blue-200 uppercase font-bold leading-none">
+                                Sec. de Esportes, Lazer e Eventos
                               </div>
                             </div>
                           </div>
-                          <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-white text-blue-800 rounded border border-blue-200">
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 bg-white text-blue-900 rounded shadow-2xs border border-blue-200 shrink-0">
                             {normalizeCategory(st.category, st.age)}
                           </span>
                         </div>
 
-                        {/* Corpo da Frente: APENAS Foto Ampliada, Nome, Idade, Atleta Inscrito, Matrícula e QR Code Ampliado */}
-                        <div className="p-4 relative z-10 flex-1 flex flex-col justify-between space-y-3.5">
-                          <div className="flex gap-4 items-center">
-                            {/* Foto de Perfil Ampliada para ocupar o espaço em branco */}
-                            <div className="relative shrink-0">
-                              <div className="w-28 h-34 sm:w-32 sm:h-38 rounded-2xl border-2 border-blue-700 overflow-hidden bg-blue-50 shadow-md flex items-center justify-center">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={photo}
-                                  alt={st.fullName}
-                                  className="w-full h-full object-cover"
-                                />
+                        {/* Corpo Central Frente: Foto 3x4 + Dados do Aluno + QR Code de Presença (52.5mm) */}
+                        <div className="px-2.5 py-1.5 relative z-10 flex-1 flex items-center gap-2.5 overflow-hidden">
+                          {/* 1. Foto 3x4 Proporcional do Atleta */}
+                          <div className="relative shrink-0">
+                            <div
+                              style={{ width: '23mm', height: '30.5mm' }}
+                              className="rounded-lg border-2 border-blue-700 overflow-hidden bg-blue-50 shadow-xs flex items-center justify-center shrink-0"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={photo}
+                                alt={st.fullName}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            {st.jerseyNumber && (
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-blue-800 text-white font-black text-[9px] flex items-center justify-center border border-white shadow-xs">
+                                #{st.jerseyNumber}
                               </div>
-                              {st.jerseyNumber && (
-                                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-blue-700 text-white font-black text-xs flex items-center justify-center border-2 border-white shadow-sm">
-                                  #{st.jerseyNumber}
-                                </div>
+                            )}
+                          </div>
+
+                          {/* 2. Dados do Atleta (Centro) */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
+                            <div>
+                              <span className="text-[6.5px] font-black text-blue-800 uppercase tracking-wider bg-blue-100/90 px-1.5 py-0.2 rounded border border-blue-300 inline-block mb-0.5">
+                                Atleta Oficial
+                              </span>
+                              <h3 className="font-black text-slate-900 text-[11px] leading-tight uppercase line-clamp-2">
+                                {st.fullName}
+                              </h3>
+                            </div>
+
+                            <div className="text-[8px] text-slate-700 font-medium leading-tight">
+                              <span className="text-slate-500 font-bold">Idade:</span>{' '}
+                              <strong className="text-slate-900 font-extrabold">{st.age} anos</strong>
+                              {st.birthDate && (
+                                <span className="text-slate-500"> • Nasc: {st.birthDate.split('-').reverse().join('/')}</span>
                               )}
                             </div>
 
-                            {/* Informações: Atleta Inscrito, Nome, Idade e Matrícula */}
-                            <div className="flex-1 min-w-0 space-y-1.5">
-                              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block">
-                                Atleta Inscrito
+                            {cls?.name && (
+                              <div className="text-[7.5px] text-slate-600 truncate leading-tight">
+                                <span className="text-slate-500 font-bold">Turma:</span> {cls.name}
+                              </div>
+                            )}
+
+                            <div>
+                              <span className="text-[6.5px] font-black text-slate-500 uppercase tracking-wider block">
+                                Matrícula Oficial:
                               </span>
-                              <h3 className="font-black text-slate-900 text-base sm:text-lg leading-snug">
-                                {st.fullName}
-                              </h3>
-
-                              <div className="text-xs sm:text-sm text-slate-700 font-medium">
-                                <span className="text-slate-500">Idade:</span>{' '}
-                                <strong className="text-slate-900 font-bold">{st.age} anos</strong>
-                              </div>
-
-                              <div className="pt-0.5">
-                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-                                  Matrícula Oficial:
-                                </span>
-                                <span className="font-mono text-xs sm:text-sm font-black text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 inline-block shadow-2xs">
-                                  {st.registrationNumber}
-                                </span>
-                              </div>
+                              <span className="font-mono text-[9px] font-black text-blue-950 bg-blue-50/90 px-1.5 py-0.5 rounded border border-blue-300 inline-block shadow-2xs tracking-wider">
+                                {st.registrationNumber}
+                              </span>
                             </div>
                           </div>
 
-                          {/* QR CODE GIGANTE PARA LEITURA DIRETA E INSTANTÂNEA */}
+                          {/* 3. QR Code de Presença (Direita) */}
                           <div
                             onClick={() => setShowBigQr(true)}
-                            className="bg-blue-50/90 hover:bg-blue-100/80 border-2 border-blue-600 rounded-2xl p-3 flex flex-col items-center justify-center shadow-xs cursor-pointer transition-all hover:scale-[1.01]"
-                            title="QR Code Oficial — Clique para ver ampliado"
+                            style={{ width: '22mm', height: '30.5mm' }}
+                            className="bg-blue-50/90 border border-blue-400 rounded-lg p-1 flex flex-col items-center justify-between shrink-0 shadow-2xs cursor-pointer hover:bg-blue-100/80 transition-colors"
+                            title="QR Code Oficial — Clique para ampliar"
                           >
-                            <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wider mb-2">
-                              <QrCode className="w-4 h-4 text-blue-700" />
-                              <span>QR Code Oficial</span>
-                            </div>
+                            <span className="text-[6.5px] font-black text-blue-950 uppercase tracking-wider flex items-center gap-0.5">
+                              <QrCode className="w-2.5 h-2.5 text-blue-700" />
+                              QR Presença
+                            </span>
 
-                            <div className="bg-white p-2.5 rounded-2xl border-2 border-blue-700 shadow-sm flex items-center justify-center">
+                            <div className="bg-white p-0.5 rounded-md border border-blue-300 shadow-2xs flex items-center justify-center">
                               <QRCodeDisplay
                                 value={getStudentQrPayload(st, cls)}
-                                size={200}
-                                altText={`QR Code Oficial Sincronizado - ${st.fullName}`}
+                                size={60}
+                                altText={`QR Code - ${st.fullName}`}
                               />
                             </div>
+
+                            <span className="text-[6px] font-bold text-slate-500 text-center leading-none">
+                              Chamada Rápida
+                            </span>
                           </div>
                         </div>
 
-                        {/* Rodapé da Frente */}
-                        <div className="bg-slate-50 border-t border-slate-200 px-3 py-1.5 flex items-center justify-between text-[9px] text-slate-500 relative z-10">
-                          <span>Identificação Oficial do Atleta</span>
-                          <span className="font-mono font-bold text-blue-900">{st.registrationNumber}</span>
+                        {/* Rodapé Frente (7mm) */}
+                        <div className="bg-slate-50 border-t border-slate-200 px-2.5 py-1 flex items-center justify-between text-[7px] text-slate-500 shrink-0 relative z-10">
+                          <span className="font-bold text-slate-600">IDENTIFICAÇÃO OFICIAL DO ATLETA</span>
+                          <span className="font-mono font-black text-blue-900">
+                            VAL: 31/12/2026
+                          </span>
                         </div>
                       </div>
 
-                      {/* ================= VERSO DA CARTEIRINHA (TOTALMENTE AZUL & EXCLUSIVO PARA PATROCÍNIOS) ================= */}
+                      {/* ================= VERSO DA CARTEIRINHA (102mm x 68mm) ================= */}
                       <div
                         id={`id-card-back-${st.id}`}
-                        className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-950 rounded-2xl border-2 border-blue-900 shadow-md overflow-hidden flex flex-col justify-between relative min-h-[350px] text-white"
+                        style={{
+                          width: '102mm',
+                          height: '68mm',
+                          minWidth: '102mm',
+                          minHeight: '68mm',
+                          maxWidth: '102mm',
+                          maxHeight: '68mm',
+                        }}
+                        className="id-card-rg bg-gradient-to-br from-blue-800 via-blue-900 to-indigo-950 rounded-xl border-2 border-blue-950 shadow-md overflow-hidden flex flex-col justify-between relative text-white box-border select-none shrink-0 print:border-2 print:border-blue-950"
                       >
                         {/* Court Watermark in translucent white */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.08] p-2" viewBox="0 0 200 300" preserveAspectRatio="none">
-                          <rect x="8" y="8" width="184" height="284" fill="none" stroke="#FFFFFF" strokeWidth="3" />
-                          <line x1="8" y1="100" x2="192" y2="100" stroke="#FFFFFF" strokeWidth="2.5" />
-                          <line x1="8" y1="200" x2="192" y2="200" stroke="#FFFFFF" strokeWidth="2.5" />
-                          <line x1="8" y1="150" x2="192" y2="150" stroke="#FFFFFF" strokeWidth="4" />
-                          <circle cx="100" cy="150" r="30" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.06] p-1.5" viewBox="0 0 200 133" preserveAspectRatio="none">
+                          <rect x="4" y="4" width="192" height="125" fill="none" stroke="#FFFFFF" strokeWidth="2" />
+                          <line x1="4" y1="44" x2="196" y2="44" stroke="#FFFFFF" strokeWidth="1.5" />
+                          <line x1="4" y1="88" x2="196" y2="88" stroke="#FFFFFF" strokeWidth="1.5" />
+                          <line x1="4" y1="66" x2="196" y2="66" stroke="#FFFFFF" strokeWidth="2.5" />
+                          <circle cx="100" cy="66" r="20" fill="none" stroke="#FFFFFF" strokeWidth="1.5" />
                         </svg>
 
-                        {/* Header Verso Azul */}
-                        <div className="bg-blue-950/60 p-3.5 border-b border-blue-500/30 flex items-center justify-between relative z-10 backdrop-blur-xs">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-white text-blue-800 flex items-center justify-center font-black text-sm shadow-xs">
+                        {/* Header Verso (8.5mm) */}
+                        <div className="bg-blue-950/70 px-2.5 py-1.5 border-b border-blue-400/30 flex items-center justify-between shrink-0 backdrop-blur-2xs relative z-10">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-md bg-white text-blue-900 flex items-center justify-center font-black text-[9px] shadow-2xs">
                               VA
                             </div>
                             <div>
-                              <div className="text-[11px] font-black tracking-wider uppercase leading-tight text-white">
+                              <div className="text-[9px] font-black tracking-wider uppercase leading-tight text-white">
                                 Academia VoleiAraça
                               </div>
-                              <div className="text-[9px] text-blue-200 uppercase font-bold tracking-wider">
+                              <div className="text-[6.5px] text-blue-200 uppercase font-bold tracking-wider leading-none">
                                 Patrocinadores & Apoiadores Oficiais
                               </div>
                             </div>
                           </div>
-                          <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-600/60 text-blue-100 rounded border border-blue-400/40">
+                          <span className="text-[7.5px] font-black uppercase px-1.5 py-0.5 bg-blue-600/70 text-blue-100 rounded border border-blue-300/40 shrink-0">
                             Apoio Esportivo
                           </span>
                         </div>
 
-                        {/* Corpo do Verso: DEDICADO EXCLUSIVAMENTE AOS PATROCÍNIOS */}
-                        <div className="p-4 relative z-10 flex-1 flex flex-col justify-center space-y-2.5">
+                        {/* Corpo Central Verso: Patrocinadores Oficiais Adaptados ao Tamanho RG (52.5mm) */}
+                        <div className="p-2 relative z-10 flex-1 flex flex-col justify-center overflow-hidden">
                           {activeSponsors.length > 0 ? (
                             <div
                               onClick={() => setIsSponsorsModalOpen(true)}
-                              className="space-y-2 cursor-pointer group"
+                              className="cursor-pointer group flex flex-col justify-center h-full"
                               title="Clique para gerenciar ou adicionar patrocinadores"
                             >
-                              <div className="grid grid-cols-1 gap-2">
-                                {activeSponsors.map((sp) => (
+                              <div className={`grid gap-1.5 ${activeSponsors.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                {activeSponsors.slice(0, 6).map((sp) => (
                                   <div
                                     key={sp.id}
-                                    className="bg-white/95 hover:bg-white text-slate-900 rounded-xl p-2.5 shadow-sm border border-white/40 flex items-center justify-between gap-3 transition-transform group-hover:scale-[1.01]"
+                                    className="bg-white/95 hover:bg-white text-slate-900 rounded-lg p-1 shadow-2xs border border-white/40 flex items-center gap-1.5 overflow-hidden transition-transform group-hover:scale-[1.01]"
                                   >
                                     <div
-                                      style={{ height: `${sponsorSize}px` }}
-                                      className="w-28 flex items-center justify-center p-0.5 bg-slate-50 rounded-lg shrink-0 overflow-hidden border border-slate-200"
+                                      style={{ height: `${Math.min(sponsorSize, 24)}px` }}
+                                      className="w-12 flex items-center justify-center p-0.5 bg-slate-50 rounded shrink-0 overflow-hidden border border-slate-200"
                                     >
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img
@@ -570,12 +637,12 @@ export function StudentIdCardModal({
                                         className="max-h-full max-w-full object-contain"
                                       />
                                     </div>
-                                    <div className="flex-1 min-w-0 text-right">
-                                      <div className="font-extrabold text-xs text-slate-900 truncate">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-extrabold text-[7.5px] text-slate-900 truncate leading-tight">
                                         {sp.name}
                                       </div>
-                                      <div className="text-[10px] font-semibold text-blue-800 truncate">
-                                        {sp.category || 'Patrocinador Oficial'}
+                                      <div className="text-[6.5px] font-bold text-blue-800 truncate leading-none">
+                                        {sp.category || 'Apoiador Oficial'}
                                       </div>
                                     </div>
                                   </div>
@@ -583,43 +650,36 @@ export function StudentIdCardModal({
                               </div>
 
                               <div className="text-center pt-1 print:hidden">
-                                <span className="text-[8px] text-blue-200 hover:text-white underline font-bold uppercase tracking-wider">
-                                  Gerenciar Logos & Tamanho ({sponsorSize}px)
+                                <span className="text-[7.5px] text-blue-200 hover:text-white underline font-bold uppercase tracking-wider">
+                                  Gerenciar Logos de Patrocínio ({activeSponsors.length})
                                 </span>
                               </div>
                             </div>
                           ) : (
                             <div
                               onClick={() => setIsSponsorsModalOpen(true)}
-                              className="p-6 rounded-2xl border-2 border-dashed border-blue-300/40 hover:border-white bg-blue-900/30 text-center cursor-pointer transition-colors space-y-2 group"
+                              className="p-3 rounded-xl border border-dashed border-blue-300/40 hover:border-white bg-blue-900/30 text-center cursor-pointer transition-colors space-y-1 group"
                             >
-                              <Building2 className="w-8 h-8 text-blue-200 mx-auto group-hover:scale-110 transition-transform" />
-                              <div className="text-xs font-bold text-white">
-                                Nenhum patrocinador ativo no momento
+                              <Building2 className="w-5 h-5 text-blue-200 mx-auto group-hover:scale-110 transition-transform" />
+                              <div className="text-[9px] font-bold text-white">
+                                Espaço para Patrocinadores Oficiais
                               </div>
-                              <p className="text-[10px] text-blue-200">
-                                Clique para adicionar logos de empresas e apoiadores oficiais no verso desta carteirinha.
+                              <p className="text-[7.5px] text-blue-200">
+                                Clique para adicionar os logos das empresas apoiadoras do voleibol.
                               </p>
-                              <button
-                                type="button"
-                                className="px-3 py-1.5 rounded-xl bg-white text-blue-900 font-bold text-xs shadow-xs hover:bg-blue-50 transition-colors inline-flex items-center gap-1.5"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>+ Adicionar Patrocinador</span>
-                              </button>
                             </div>
                           )}
                         </div>
 
-                        {/* Rodapé Verso Azul */}
-                        <div className="bg-blue-950/80 p-3 px-4 border-t border-blue-500/30 flex items-center justify-between text-[9px] relative z-10 text-blue-200">
+                        {/* Rodapé Verso (7mm) */}
+                        <div className="bg-blue-950/80 px-2.5 py-1 border-t border-blue-400/30 flex items-center justify-between text-[7px] relative z-10 text-blue-200 shrink-0">
                           <div>
-                            <span className="font-bold text-white">Incentivo ao Voleibol Juvenil</span>
-                            <span className="block text-[8px] text-blue-300">Faixa Etária Oficial: 07 a 17 Anos</span>
+                            <span className="font-bold text-white">Incentivo ao Esporte</span>
+                            <span className="text-blue-300"> • 07 a 17 Anos</span>
                           </div>
                           <div className="text-right">
-                            <span className="font-bold text-white block">Coordenação VoleiAraça</span>
-                            <span className="text-[8px] text-blue-300">Temporada 2026</span>
+                            <span className="font-bold text-white">VoleiAraça</span>
+                            <span className="text-blue-300"> • 2026</span>
                           </div>
                         </div>
                       </div>

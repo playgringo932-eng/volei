@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
 
     const fullName = String(body.fullName || '').trim();
     const birthDate = String(body.birthDate || '').trim();
-    const guardianName = String(body.guardian?.name || '').trim();
-    const guardianPhone = String(body.guardian?.phone || '').trim();
+    const guardianName = String(body.guardian?.name || body.guardianName || '').trim();
+    const guardianPhone = String(body.guardian?.phone || body.guardianPhone || '').trim();
 
     if (!fullName) {
       return NextResponse.json(
@@ -111,6 +111,14 @@ export async function POST(req: NextRequest) {
     const studentId = `std_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const category = getCategoryByAge(age);
 
+    // Validação de Turma Válida
+    const existingClasses = (state.data?.classes || []) as any[];
+    const validClassIds = new Set(existingClasses.map((c) => String(c.id)));
+    const requestedClassId = body.classId ? String(body.classId) : '';
+    const assignedClassId = requestedClassId && validClassIds.has(requestedClassId)
+      ? requestedClassId
+      : (existingClasses.length > 0 ? String(existingClasses[0].id) : null);
+
     const newStudent: Student = {
       id: studentId,
       registrationNumber: regNumber,
@@ -119,7 +127,9 @@ export async function POST(req: NextRequest) {
       age,
       gender: body.gender || 'Masculino',
       category,
-      classId: body.classId || 'turma-m1',
+      preferredPosition: 'Em Formação Geral',
+      level: 'Iniciante',
+      classId: assignedClassId || '',
       status: 'Ativo',
       enrollmentDate: new Date().toISOString().split('T')[0],
       medicalConditions: body.medicalConditions?.trim() || undefined,
@@ -161,14 +171,15 @@ export async function POST(req: NextRequest) {
 
     writeSharedState(state);
 
-    // Se o Supabase estiver configurado, salva também remotamente
+    // Salva automaticamente no banco Supabase em nuvem
     if (state.config?.url && state.config?.anonKey) {
       try {
         const client = createClient(state.config.url, state.config.anonKey, {
           auth: { persistSession: false },
         });
 
-        const record = {
+        // 1. Salva aluno com o schema oficial exato da tabela students no Supabase
+        const studentRecord = {
           id: newStudent.id,
           registration_number: newStudent.registrationNumber,
           full_name: newStudent.fullName,
@@ -176,28 +187,51 @@ export async function POST(req: NextRequest) {
           age: newStudent.age,
           gender: newStudent.gender,
           category: newStudent.category,
-          preferred_position: newStudent.preferredPosition || 'Geral',
-          level: newStudent.level || 'Iniciante',
-          height_cm: newStudent.heightCm || null,
-          jersey_number: newStudent.jerseyNumber || null,
-          class_id: newStudent.classId,
-          status: newStudent.status,
+          preferred_position: newStudent.preferredPosition || 'Em Formação Geral',
+          level: 'Iniciante',
+          height_cm: null,
+          jersey_number: null,
+          class_id: assignedClassId,
+          status: 'Ativo',
           enrollment_date: newStudent.enrollmentDate,
           medical_conditions: newStudent.medicalConditions || null,
           allergies: newStudent.allergies || null,
-          notes: newStudent.notes || null,
-          guardian_name: newStudent.guardian.name,
-          guardian_phone: newStudent.guardian.phone,
-          guardian_relationship: newStudent.guardian.relationship,
-          guardian_email: newStudent.guardian.email || null,
-          allow_whatsapp_notifications: newStudent.guardian.allowWhatsAppNotifications,
-          avatar_seed: newStudent.avatarSeed,
-          card_valid_until: newStudent.cardValidUntil,
+          guardian: newStudent.guardian,
+          notes: null,
+          avatar_seed: newStudent.avatarSeed || null,
+          photo_url: null,
+          card_valid_until: newStudent.cardValidUntil || '2026-12-31',
+          updated_at: new Date().toISOString(),
         };
 
-        await client.from('students').upsert(record, { onConflict: 'id' });
+        const { error: studentErr } = await client
+          .from('students')
+          .upsert(studentRecord, { onConflict: 'id' });
+
+        if (studentErr) {
+          console.error('Erro ao gravar aluno no Supabase:', studentErr);
+        }
+
+        // 2. Salva notificação de boas-vindas no Supabase
+        const notifRecord = {
+          id: welcomeNotif.id,
+          student_id: newStudent.id,
+          student_name: newStudent.fullName,
+          guardian_name: newStudent.guardian.name,
+          guardian_phone: newStudent.guardian.phone,
+          guardian_email: null,
+          type: welcomeNotif.type,
+          message: welcomeNotif.message,
+          channel: welcomeNotif.channel,
+          sent_at: welcomeNotif.sentAt,
+          status: welcomeNotif.status,
+        };
+
+        await client
+          .from('notifications')
+          .upsert(notifRecord, { onConflict: 'id' });
       } catch (err) {
-        console.warn('Aviso: Falha não crítica ao salvar no Supabase:', err);
+        console.warn('Aviso: Falha ao persistir inscrição no Supabase:', err);
       }
     }
 

@@ -25,6 +25,7 @@ import { VolleyballClass, Student } from '@/types/volleyball';
 import { calculateAge, getCategoryByAge, formatBrazilianPhone } from '@/lib/volleyballHelpers';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import { INITIAL_CLASSES } from '@/lib/mockData';
+import { storageService } from '@/lib/storage';
 
 export default function PublicEnrollmentPage() {
   const [classes, setClasses] = useState<VolleyballClass[]>(INITIAL_CLASSES);
@@ -146,6 +147,12 @@ export default function PublicEnrollmentPage() {
 
       if (json.success && json.student) {
         setCreatedStudent(json.student);
+        try {
+          storageService.addStudent(json.student);
+          storageService.pullFromSharedSync(true);
+        } catch {
+          // fallback
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setErrorMessage(json.message || 'Erro ao enviar inscrição. Tente novamente.');
