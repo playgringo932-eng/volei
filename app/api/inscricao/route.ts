@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readSharedState, writeSharedState } from '@/lib/serverSharedState';
+import {
+  readSharedState,
+  writeSharedState,
+  fetchFromSupabaseOnServer,
+} from '@/lib/serverSharedState';
 import { calculateAge, getCategoryByAge } from '@/lib/volleyballHelpers';
-import { Student } from '@/types/volleyball';
+import { Student, NotificationLog } from '@/types/volleyball';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +16,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    const state = readSharedState();
+    const state = await fetchFromSupabaseOnServer();
     const classes = (state.data?.classes || []) as any[];
     const students = (state.data?.students || []) as any[];
 
@@ -115,35 +119,28 @@ export async function POST(req: NextRequest) {
       age,
       gender: body.gender || 'Masculino',
       category,
-      preferredPosition: body.preferredPosition || 'Ponteiro(a)',
-      level: body.level || 'Iniciante',
-      heightCm: body.heightCm ? Number(body.heightCm) : undefined,
-      jerseyNumber: body.jerseyNumber ? Number(body.jerseyNumber) : undefined,
       classId: body.classId || 'turma-m1',
       status: 'Ativo',
       enrollmentDate: new Date().toISOString().split('T')[0],
       medicalConditions: body.medicalConditions?.trim() || undefined,
       allergies: body.allergies?.trim() || undefined,
-      notes: body.notes?.trim() || 'Inscrição realizada via formulário público online.',
       avatarSeed: studentId,
       cardValidUntil: '2026-12-31',
       guardian: {
         name: guardianName,
         phone: guardianPhone,
         relationship: body.guardian?.relationship || 'Mãe',
-        email: body.guardian?.email?.trim() || '',
         allowWhatsAppNotifications: Boolean(body.guardian?.allowWhatsAppNotifications ?? true),
       },
     };
 
     // Notificação de boas-vindas
-    const welcomeNotif = {
+    const welcomeNotif: NotificationLog = {
       id: `notif_${Date.now()}`,
       studentId: newStudent.id,
       studentName: newStudent.fullName,
       guardianName: newStudent.guardian.name,
       guardianPhone: newStudent.guardian.phone,
-      guardianEmail: newStudent.guardian.email,
       type: 'Boas-Vindas Matrícula',
       message: `Bem-vindo(a) à Academia VoleiAraça! A matrícula ${newStudent.registrationNumber} foi confirmada com sucesso para o atleta ${newStudent.fullName} na categoria ${newStudent.category}.`,
       channel: 'WhatsApp',

@@ -28,8 +28,6 @@ export function exportStudentsToExcel(students: Student[], classes: VolleyballCl
       'Data Nasc.': s.birthDate,
       'Categoria': s.category,
       'Gênero': s.gender,
-      'Posição Preferida': s.preferredPosition,
-      'Nível': s.level,
       'Turma': cls ? cls.name : 'Sem Turma',
       'Turno': cls ? cls.shift : '-',
       'Horário': cls ? `${cls.startTime} às ${cls.endTime}` : '-',
@@ -40,10 +38,8 @@ export function exportStudentsToExcel(students: Student[], classes: VolleyballCl
       'Nome do Responsável': s.guardian.name,
       'Parentesco': s.guardian.relationship,
       'WhatsApp Responsável': s.guardian.phone,
-      'E-mail Responsável': s.guardian.email || '-',
       'Tel. Emergência': s.guardian.emergencyPhone || '-',
       'Observações Médicas': s.allergies || s.medicalConditions || 'Nenhuma informada',
-      'Notas Pedagógicas': s.notes || '-',
     };
   });
 

@@ -205,7 +205,10 @@ function AttendanceSessionBoard({
     return classStudents.filter((s) => {
       if (filterQuery.trim()) {
         const query = filterQuery.toLowerCase();
-        if (!s.fullName.toLowerCase().includes(query) && !s.preferredPosition.toLowerCase().includes(query)) {
+        const matchesName = s.fullName.toLowerCase().includes(query);
+        const matchesReg = s.registrationNumber?.toLowerCase().includes(query);
+        const matchesGuardian = s.guardian?.name?.toLowerCase().includes(query);
+        if (!matchesName && !matchesReg && !matchesGuardian) {
           return false;
         }
       }
@@ -362,7 +365,7 @@ function AttendanceSessionBoard({
                   {/* Student Identity */}
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-700 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs">
-                      {student.jerseyNumber ? `#${student.jerseyNumber}` : idx + 1}
+                      {idx + 1}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -372,7 +375,7 @@ function AttendanceSessionBoard({
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                        <span>{student.preferredPosition}</span>
+                        <span className="capitalize">{student.gender || 'Geral'}</span>
                         <span>•</span>
                         <span>Resp: {student.guardian.name}</span>
                       </div>

@@ -7,16 +7,15 @@ import {
   AlertCircle,
   CheckCircle,
   Phone,
-  Mail,
   HeartPulse,
   Trophy,
   Calendar,
   ShieldCheck,
 } from 'lucide-react';
-import { Student, VolleyballClass, VolleyballPosition, StudentLevel, EnrollmentStatus } from '@/types/volleyball';
+import { Student, VolleyballClass, EnrollmentStatus } from '@/types/volleyball';
 import { validateStudentAge, formatBRPhone, generateRegistrationCode } from '@/lib/volleyballHelpers';
 import { readFileAsBase64, getAthletePhoto } from '@/lib/avatarHelpers';
-import { Camera, Image as ImageIcon } from 'lucide-react';
+import { Camera } from 'lucide-react';
 
 interface StudentRegistrationModalProps {
   isOpen: boolean;
@@ -26,17 +25,6 @@ interface StudentRegistrationModalProps {
   studentToEdit?: Student | null;
   existingStudentsCount: number;
 }
-
-const POSITIONS: VolleyballPosition[] = [
-  'Levantador(a)',
-  'Ponteiro(a)',
-  'Oposto(a)',
-  'Central',
-  'Líbero',
-  'Em Formação Geral',
-];
-
-const LEVELS: StudentLevel[] = ['Iniciante', 'Intermediário', 'Avançado / Competição'];
 
 interface StudentFormProps {
   onClose: () => void;
@@ -59,17 +47,10 @@ function StudentForm({
   const [fullName, setFullName] = useState(studentToEdit?.fullName || '');
   const [birthDate, setBirthDate] = useState(defaultDate);
   const [gender, setGender] = useState<'Feminino' | 'Masculino' | 'Outro'>(studentToEdit?.gender || 'Feminino');
-  const [preferredPosition, setPreferredPosition] = useState<VolleyballPosition>(
-    studentToEdit?.preferredPosition || 'Em Formação Geral'
-  );
-  const [level, setLevel] = useState<StudentLevel>(studentToEdit?.level || 'Iniciante');
-  const [heightCm, setHeightCm] = useState<number | ''>(studentToEdit?.heightCm || '');
-  const [jerseyNumber, setJerseyNumber] = useState<number | ''>(studentToEdit?.jerseyNumber || '');
   const [classId, setClassId] = useState(studentToEdit?.classId || classes[0]?.id || '');
   const [status, setStatus] = useState<EnrollmentStatus>(studentToEdit?.status || 'Ativo');
   const [medicalConditions, setMedicalConditions] = useState(studentToEdit?.medicalConditions || '');
   const [allergies, setAllergies] = useState(studentToEdit?.allergies || '');
-  const [notes, setNotes] = useState(studentToEdit?.notes || '');
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,7 +69,6 @@ function StudentForm({
     'Mãe' | 'Pai' | 'Tutor(a) Legal' | 'Avô/Avó' | 'Outro'
   >(studentToEdit?.guardian.relationship || 'Mãe');
   const [guardianPhone, setGuardianPhone] = useState(studentToEdit?.guardian.phone || '');
-  const [guardianEmail, setGuardianEmail] = useState(studentToEdit?.guardian.email || '');
   const [emergencyPhone, setEmergencyPhone] = useState(studentToEdit?.guardian.emergencyPhone || '');
   const [allowWhatsApp, setAllowWhatsApp] = useState(
     studentToEdit ? studentToEdit.guardian.allowWhatsAppNotifications : true
@@ -135,22 +115,16 @@ function StudentForm({
       age: ageValidation.age,
       gender,
       category: ageValidation.category || 'Sub-13',
-      preferredPosition,
-      level,
-      heightCm: heightCm ? Number(heightCm) : undefined,
-      jerseyNumber: jerseyNumber ? Number(jerseyNumber) : undefined,
       classId: classId || (classes[0]?.id ?? 'turma-m1'),
       status,
       enrollmentDate: studentToEdit ? studentToEdit.enrollmentDate : todayDate,
       medicalConditions: medicalConditions.trim() || undefined,
       allergies: allergies.trim() || undefined,
-      notes: notes.trim() || undefined,
       photoUrl: photoUrl || undefined,
       guardian: {
         name: guardianName.trim(),
         relationship: guardianRelationship,
         phone: guardianPhone.trim(),
-        email: guardianEmail.trim(),
         emergencyPhone: emergencyPhone.trim() || undefined,
         allowWhatsAppNotifications: allowWhatsApp,
       },
@@ -177,7 +151,7 @@ function StudentForm({
             <div className="w-20 h-24 rounded-xl border-2 border-blue-600 bg-white overflow-hidden shadow-xs shrink-0 flex items-center justify-center relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={photoUrl || getAthletePhoto(fullName || 'Novo Aluno', gender, Number(jerseyNumber) || undefined)}
+                src={photoUrl || getAthletePhoto(fullName || 'Novo Aluno', gender)}
                 alt="Foto do Aluno"
                 className="w-full h-full object-cover"
               />
@@ -283,64 +257,6 @@ function StudentForm({
               <option value="Masculino">Masculino</option>
               <option value="Outro">Outro / Misto</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Posição Preferida no Vôlei
-            </label>
-            <select
-              value={preferredPosition}
-              onChange={(e) => setPreferredPosition(e.target.value as VolleyballPosition)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
-            >
-              {POSITIONS.map((pos) => (
-                <option key={pos} value={pos}>
-                  {pos}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Nível Técnico</label>
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value as StudentLevel)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
-            >
-              {LEVELS.map((lvl) => (
-                <option key={lvl} value={lvl}>
-                  {lvl}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Altura Estimada (cm)
-            </label>
-            <input
-              type="number"
-              placeholder="Ex: 165"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : '')}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Nº Camisa / Uniforme
-            </label>
-            <input
-              type="number"
-              placeholder="Ex: 7"
-              value={jerseyNumber}
-              onChange={(e) => setJerseyNumber(e.target.value ? Number(e.target.value) : '')}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
-            />
           </div>
         </div>
       </div>
@@ -451,22 +367,6 @@ function StudentForm({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              E-mail do Responsável
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
-              <input
-                type="email"
-                placeholder="responsavel@email.com"
-                value={guardianEmail}
-                onChange={(e) => setGuardianEmail(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Telefone de Emergência Alternativo
             </label>
             <input
@@ -478,7 +378,7 @@ function StudentForm({
             />
           </div>
 
-          <div className="flex items-center pt-4">
+          <div className="flex items-center pt-2 md:col-span-2">
             <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-700">
               <input
                 type="checkbox"
@@ -492,12 +392,12 @@ function StudentForm({
         </div>
       </div>
 
-      {/* Seção 4: Saúde & Observações */}
+      {/* Seção 4: Saúde & Cuidados */}
       <div>
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
           <HeartPulse className="w-4 h-4 text-blue-700" />
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            4. Informações Médicas e Observações
+            4. Informações Médicas e Cuidados Especiais
           </h3>
         </div>
 
@@ -524,19 +424,6 @@ function StudentForm({
               placeholder="Ex: Nenhuma restrição conhecida"
               value={medicalConditions}
               onChange={(e) => setMedicalConditions(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Observações Gerais do Instrutor
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Histórico esportivo, metas individuais..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
             />
           </div>

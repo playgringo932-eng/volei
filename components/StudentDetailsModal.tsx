@@ -69,7 +69,7 @@ export function StudentDetailsModal({
         <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-700 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-xs shrink-0">
-              {student.jerseyNumber ? `#${student.jerseyNumber}` : (student.fullName || 'A').charAt(0)}
+              {(student.fullName || 'A').charAt(0).toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export function StudentDetailsModal({
 
         {/* Content body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-700">
-          {/* Status & Technical Overview */}
+          {/* Status & Overview */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
               <span className="text-[11px] text-slate-500 font-semibold block mb-1">Status</span>
@@ -130,18 +130,18 @@ export function StudentDetailsModal({
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <span className="text-[11px] text-slate-500 font-semibold block mb-1">Posição</span>
-              <span className="font-bold text-slate-900 text-xs">{student.preferredPosition}</span>
+              <span className="text-[11px] text-slate-500 font-semibold block mb-1">Categoria</span>
+              <span className="font-bold text-slate-900 text-xs">{normalizeCategory(student.category, student.age)}</span>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <span className="text-[11px] text-slate-500 font-semibold block mb-1">Nível</span>
-              <span className="font-bold text-slate-800 text-xs">{student.level}</span>
+              <span className="text-[11px] text-slate-500 font-semibold block mb-1">Turno</span>
+              <span className="font-bold text-slate-800 text-xs">{currentClass?.shift || 'Geral'}</span>
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <span className="text-[11px] text-slate-500 font-semibold block mb-1">Altura</span>
-              <span className="font-bold text-slate-800 text-xs">{student.heightCm ? `${student.heightCm} cm` : 'Não informada'}</span>
+              <span className="text-[11px] text-slate-500 font-semibold block mb-1">Gênero</span>
+              <span className="font-bold text-slate-800 text-xs">{student.gender || 'Masculino'}</span>
             </div>
           </div>
 
@@ -237,12 +237,6 @@ export function StudentDetailsModal({
                 <Phone className="w-4 h-4 text-emerald-600" />
                 <span>{student.guardian?.phone || 'Sem contato'}</span>
               </div>
-              {student.guardian?.email && (
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Mail className="w-4 h-4 text-blue-600" />
-                  <span>{student.guardian.email}</span>
-                </div>
-              )}
               {student.guardian?.emergencyPhone && (
                 <div className="flex items-center gap-2 text-slate-700 font-mono">
                   <Phone className="w-4 h-4 text-amber-600" />
@@ -253,11 +247,11 @@ export function StudentDetailsModal({
           </div>
 
           {/* Health & Allergies */}
-          {(student.allergies || student.medicalConditions || student.notes) && (
+          {(student.allergies || student.medicalConditions) && (
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
               <h4 className="font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
                 <HeartPulse className="w-4 h-4 text-blue-700" />
-                Saúde & Observações
+                Saúde & Cuidados Especiais
               </h4>
               {student.allergies && (
                 <div className="text-slate-700">
@@ -267,11 +261,6 @@ export function StudentDetailsModal({
               {student.medicalConditions && (
                 <div className="text-slate-700">
                   <strong className="text-amber-700">Condições de Saúde:</strong> {student.medicalConditions}
-                </div>
-              )}
-              {student.notes && (
-                <div className="text-slate-600 italic">
-                  <strong>Anotação Técnica:</strong> &ldquo;{student.notes}&rdquo;
                 </div>
               )}
             </div>

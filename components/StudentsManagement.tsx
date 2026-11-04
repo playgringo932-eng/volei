@@ -371,7 +371,7 @@ export function StudentsManagement({
                   <th className="py-3 px-4">Aluno & Matrícula</th>
                   <th className="py-3 px-4">Idade & Categoria</th>
                   <th className="py-3 px-4">Turma & Turno</th>
-                  <th className="py-3 px-4">Posição & Nível</th>
+                  <th className="py-3 px-4">Gênero</th>
                   <th className="py-3 px-4 text-center">Status Matrícula</th>
                   <th className="py-3 px-4 text-center">Assiduidade</th>
                   <th className="py-3 px-4">Responsável</th>
@@ -411,11 +411,6 @@ export function StudentsManagement({
                             <div>
                               <div className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors flex items-center gap-1.5">
                                 <span>{student.fullName}</span>
-                                {student.jerseyNumber && (
-                                  <span className="text-[10px] px-1 py-0.2 rounded bg-blue-100 text-blue-800 font-bold font-mono">
-                                    #{student.jerseyNumber}
-                                  </span>
-                                )}
                               </div>
                               <div className="text-[11px] text-blue-800 font-mono font-bold">
                                 {student.registrationNumber}
@@ -453,10 +448,9 @@ export function StudentsManagement({
                           )}
                         </td>
 
-                        {/* Position & Level */}
+                        {/* Gender */}
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-900">{student.preferredPosition}</div>
-                          <div className="text-[11px] text-slate-500">{student.level}</div>
+                          <span className="font-semibold text-slate-800">{student.gender || 'Masculino'}</span>
                         </td>
 
                         {/* Quick Editable Status */}
@@ -628,8 +622,8 @@ export function StudentsManagement({
                       <span className="font-bold text-slate-900">{student.age} anos (07 a 17)</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Posição:</span>
-                      <span className="font-bold text-blue-900">{student.preferredPosition}</span>
+                      <span className="text-slate-500">Gênero:</span>
+                      <span className="font-bold text-slate-800">{student.gender || 'Masculino'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Turma:</span>

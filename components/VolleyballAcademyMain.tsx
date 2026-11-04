@@ -125,22 +125,16 @@ export function VolleyballAcademyMain() {
   useEffect(() => {
     async function initCrossDeviceSync() {
       try {
-        // 1. Tenta puxar alterações recentes do servidor compartilhado (ex: celular recebendo dados do PC)
-        const synced = await syncServerAndDevices();
-        if (synced) {
-          reloadData();
-        } else {
-          // Se este for o dispositivo com os dados principais, publica para o servidor
-          storageService.pushAllToSharedSync();
-        }
+        // 1. Puxa os dados mais recentes do servidor (que consulta o Supabase na nuvem)
+        await storageService.pullFromSharedSync(true);
+        reloadData();
 
-        // 2. Se o Supabase estiver configurado, carrega da nuvem com tratamento seguro
+        // 2. Se o Supabase estiver configurado, também carrega diretamente da nuvem
         if (isSupabaseConfigured()) {
           setIsCloudConnected(true);
           const res = await loadAllFromSupabase();
           if (res.success && res.hasData) {
             reloadData();
-            showToast('✓ Sincronizado com a nuvem Supabase!', 'success');
           }
         }
       } catch (err) {
@@ -154,7 +148,7 @@ export function VolleyballAcademyMain() {
   useEffect(() => {
     const handleDeviceFocus = async () => {
       try {
-        const pulled = await storageService.pullFromSharedSync();
+        const pulled = await storageService.pullFromSharedSync(true);
         if (pulled) {
           reloadData();
         }
@@ -183,7 +177,7 @@ export function VolleyballAcademyMain() {
       if (pulled) {
         reloadData();
       }
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 

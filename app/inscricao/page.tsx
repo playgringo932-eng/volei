@@ -35,10 +35,6 @@ export default function PublicEnrollmentPage() {
   const [birthDate, setBirthDate] = useState('');
   const [gender, setGender] = useState<'Masculino' | 'Feminino'>('Masculino');
   const [classId, setClassId] = useState('');
-  const [preferredPosition, setPreferredPosition] = useState('Ponteiro(a)');
-  const [level, setLevel] = useState<'Iniciante' | 'Intermediário' | 'Avançado'>('Iniciante');
-  const [heightCm, setHeightCm] = useState<number | ''>('');
-  const [jerseyNumber, setJerseyNumber] = useState<number | ''>('');
   const [medicalConditions, setMedicalConditions] = useState('');
   const [allergies, setAllergies] = useState('');
 
@@ -46,7 +42,6 @@ export default function PublicEnrollmentPage() {
   const [guardianName, setGuardianName] = useState('');
   const [guardianRelationship, setGuardianRelationship] = useState<'Mãe' | 'Pai' | 'Responsável Legal' | 'Avô/Avó' | 'Outro'>('Mãe');
   const [guardianPhone, setGuardianPhone] = useState('');
-  const [guardianEmail, setGuardianEmail] = useState('');
   const [allowWhatsApp, setAllowWhatsApp] = useState(true);
   const [agreedTerms, setAgreedTerms] = useState(false);
 
@@ -130,17 +125,12 @@ export default function PublicEnrollmentPage() {
         birthDate,
         gender,
         classId: classId || classes[0]?.id || 'turma-m1',
-        preferredPosition,
-        level,
-        heightCm: heightCm ? Number(heightCm) : undefined,
-        jerseyNumber: jerseyNumber ? Number(jerseyNumber) : undefined,
         medicalConditions: medicalConditions.trim() || undefined,
         allergies: allergies.trim() || undefined,
         guardian: {
           name: guardianName.trim(),
           relationship: guardianRelationship,
           phone: guardianPhone.trim(),
-          email: guardianEmail.trim() || undefined,
           allowWhatsAppNotifications: allowWhatsApp,
         },
       };
@@ -188,13 +178,10 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
     setFullName('');
     setBirthDate('');
     setGender('Masculino');
-    setHeightCm('');
-    setJerseyNumber('');
     setMedicalConditions('');
     setAllergies('');
     setGuardianName('');
     setGuardianPhone('');
-    setGuardianEmail('');
     setAgreedTerms(false);
     setCreatedStudent(null);
     setErrorMessage(null);
@@ -442,65 +429,6 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
                     <option value="Feminino">Feminino</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Posição de Preferência no Vôlei
-                  </label>
-                  <select
-                    value={preferredPosition}
-                    onChange={(e) => setPreferredPosition(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white"
-                  >
-                    <option value="Levantador(a)">Levantador(a)</option>
-                    <option value="Ponteiro(a)">Ponteiro(a)</option>
-                    <option value="Central">Central</option>
-                    <option value="Oposto(a)">Oposto(a)</option>
-                    <option value="Líbero">Líbero</option>
-                    <option value="Em definição">Ainda estou definindo / Iniciação</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Nível de Prática
-                  </label>
-                  <select
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value as 'Iniciante' | 'Intermediário' | 'Avançado')}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white"
-                  >
-                    <option value="Iniciante">Iniciante (Nunca jogou ou jogou pouco)</option>
-                    <option value="Intermediário">Intermediário (Já treina ou tem noções)</option>
-                    <option value="Avançado">Avançado (Já disputa campeonatos)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Altura Aproximada (cm) <span className="text-slate-400 font-normal">(Opcional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 165"
-                    value={heightCm}
-                    onChange={(e) => setHeightCm(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Número Preferido de Camisa <span className="text-slate-400 font-normal">(Opcional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 7"
-                    value={jerseyNumber}
-                    onChange={(e) => setJerseyNumber(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white"
-                  />
-                </div>
               </div>
             </div>
 
@@ -624,19 +552,6 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
                     value={guardianPhone}
                     onChange={handlePhoneChange}
                     placeholder="(11) 98765-4321"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    E-mail do Responsável <span className="text-slate-400 font-normal">(Opcional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={guardianEmail}
-                    onChange={(e) => setGuardianEmail(e.target.value)}
-                    placeholder="exemplo@email.com"
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white"
                   />
                 </div>

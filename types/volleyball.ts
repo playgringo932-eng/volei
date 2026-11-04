@@ -54,7 +54,7 @@ export interface Guardian {
   name: string;
   relationship: 'Mãe' | 'Pai' | 'Tutor(a) Legal' | 'Avô/Avó' | 'Outro';
   phone: string; // WhatsApp formatted
-  email: string;
+  email?: string;
   emergencyPhone?: string;
   allowWhatsAppNotifications: boolean;
 }
@@ -67,8 +67,8 @@ export interface Student {
   age: number; // strictly 7 to 17
   gender: 'Feminino' | 'Masculino' | 'Outro';
   category: VolleyballCategory; // Calculated from age
-  preferredPosition: VolleyballPosition;
-  level: StudentLevel;
+  preferredPosition?: VolleyballPosition;
+  level?: StudentLevel;
   heightCm?: number;
   jerseyNumber?: number;
   classId: string; // Linked to Turma

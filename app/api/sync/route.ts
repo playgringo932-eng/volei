@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   readSharedState,
   writeSharedState,
+  fetchFromSupabaseOnServer,
+  saveToSupabaseOnServer,
   normalizeSupabaseUrl,
   SharedState,
 } from '@/lib/serverSharedState';
@@ -10,21 +12,33 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/sync
- * Retorna as credenciais de autenticação, configurações e dados compartilhados
+ * Retorna as credenciais de autenticação, configurações e os dados mais recentes
+ * sincronizados diretamente do Supabase em nuvem.
  */
 export async function GET() {
-  const state = readSharedState();
-  return NextResponse.json({
-    success: true,
-    config: state.config,
-    adminAuth: state.adminAuth,
-    data: state.data,
-  });
+  try {
+    const state = await fetchFromSupabaseOnServer();
+    return NextResponse.json({
+      success: true,
+      config: state.config,
+      adminAuth: state.adminAuth,
+      data: state.data,
+    });
+  } catch (err) {
+    const fallback = readSharedState();
+    return NextResponse.json({
+      success: true,
+      config: fallback.config,
+      adminAuth: fallback.adminAuth,
+      data: fallback.data,
+    });
+  }
 }
 
 /**
  * POST /api/sync
  * Atualiza senha de administrador, credenciais e/ou dados em todos os aparelhos
+ * salvando no cache local e persistindo no banco de dados Supabase em nuvem.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -57,9 +71,16 @@ export async function POST(req: NextRequest) {
 
     writeSharedState(updatedState);
 
+    // Persiste também no Supabase em segundo plano
+    if (body.data) {
+      saveToSupabaseOnServer(body.data).catch((e) => {
+        console.warn('Erro assíncrono ao salvar no Supabase:', e);
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Sincronização entre dispositivos atualizada com sucesso no servidor!',
+      message: 'Sincronização entre dispositivos atualizada com sucesso no servidor e na nuvem!',
       config: updatedState.config,
       adminAuth: updatedState.adminAuth,
       updatedAt: nowIso,
