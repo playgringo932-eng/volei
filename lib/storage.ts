@@ -189,19 +189,15 @@ export const storageService = {
 
   // --- ATTENDANCE SESSIONS ---
   getAttendanceSessions(): DailyAttendanceSession[] {
-    if (!isClient) return generateInitialAttendanceSessions().map(normalizeSession);
+    if (!isClient) return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
-      if (!data) {
-        const initial = generateInitialAttendanceSessions().map(normalizeSession);
-        localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(initial));
-        return initial;
-      }
+      if (!data) return [];
       const parsed = JSON.parse(data);
-      if (!Array.isArray(parsed)) return generateInitialAttendanceSessions().map(normalizeSession);
+      if (!Array.isArray(parsed)) return [];
       return parsed.map(normalizeSession);
     } catch {
-      return generateInitialAttendanceSessions().map(normalizeSession);
+      return [];
     }
   },
 

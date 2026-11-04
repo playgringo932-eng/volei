@@ -324,6 +324,13 @@ export async function saveAllToSupabase(): Promise<{
       }
     }
 
+    // Buscar lista de turmas existentes no Supabase para garantir integridade referencial das FKs
+    const { data: dbClasses } = await client.from('classes').select('id');
+    const validClassIds = new Set<string>([
+      ...formattedClasses.map((c) => String(c.id)),
+      ...(dbClasses || []).map((c: { id: string }) => String(c.id)),
+    ]);
+
     // 2. Alunos
     const formattedStudents = students.map((s) => ({
       id: s.id,
@@ -337,7 +344,7 @@ export async function saveAllToSupabase(): Promise<{
       level: s.level || 'Iniciante',
       height_cm: s.heightCm || null,
       jersey_number: s.jerseyNumber || null,
-      class_id: s.classId || null,
+      class_id: s.classId && validClassIds.has(String(s.classId)) ? String(s.classId) : null,
       status: s.status,
       enrollment_date: s.enrollmentDate,
       medical_conditions: s.medicalConditions || null,
@@ -366,10 +373,14 @@ export async function saveAllToSupabase(): Promise<{
       }
     }
 
-    // 3. Presenças / Sessões
-    const formattedSessions = sessions.map((sess) => ({
+    // 3. Presenças / Sessões - apenas sessões de turmas reais existentes no banco (evita erro de FK constraint)
+    const validSessions = sessions.filter(
+      (sess) => sess.classId && validClassIds.has(String(sess.classId))
+    );
+
+    const formattedSessions = validSessions.map((sess) => ({
       id: sess.id,
-      class_id: sess.classId,
+      class_id: String(sess.classId),
       date: sess.date,
       instructor_name: sess.instructorName,
       entries: sess.entries || {},
@@ -385,10 +396,13 @@ export async function saveAllToSupabase(): Promise<{
       if (errA) throw new Error(`Erro ao salvar presenças: ${errA.message}`);
     }
 
-    // 4. Notificações
+    // 4. Notificações - garantir que student_id seja válido caso exista FK
+    const validStudentIds = new Set<string>([
+      ...formattedStudents.map((s) => String(s.id)),
+    ]);
     const formattedNotifs = notifications.map((n) => ({
       id: n.id,
-      student_id: n.studentId,
+      student_id: n.studentId && validStudentIds.has(String(n.studentId)) ? String(n.studentId) : null,
       student_name: n.studentName,
       guardian_name: n.guardianName,
       guardian_phone: n.guardianPhone,

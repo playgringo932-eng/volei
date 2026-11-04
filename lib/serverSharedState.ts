@@ -74,7 +74,7 @@ let inMemoryState: SharedState = {
   data: {
     students: INITIAL_STUDENTS.map(normalizeStudent),
     classes: INITIAL_CLASSES.map(normalizeClass),
-    sessions: generateInitialAttendanceSessions().map(normalizeSession),
+    sessions: [],
     notifications: INITIAL_NOTIFICATIONS.map(normalizeNotification),
     sponsors: DEFAULT_SPONSORS.map(normalizeSponsor),
     sponsorSize: 28,
@@ -134,7 +134,7 @@ export function readSharedState(): SharedState {
           classes: Array.isArray(parsed.data?.classes) && parsed.data.classes.length > 0
             ? parsed.data.classes.map(normalizeClass)
             : inMemoryState.data.classes,
-          sessions: Array.isArray(parsed.data?.sessions) && parsed.data.sessions.length > 0
+          sessions: Array.isArray(parsed.data?.sessions)
             ? parsed.data.sessions.map(normalizeSession)
             : inMemoryState.data.sessions,
           notifications: Array.isArray(parsed.data?.notifications) && parsed.data.notifications.length > 0
@@ -190,39 +190,52 @@ export async function fetchFromSupabaseOnServer(force = false): Promise<SharedSt
   if (!client) return readSharedState();
 
   try {
-    const [resClasses, resStudents, resSessions, resNotifs, resSponsors] = await Promise.all([
+    const fetchPromise = Promise.all([
       client.from('classes').select('*'),
       client.from('students').select('*'),
       client.from('attendance_sessions').select('*'),
       client.from('notifications').select('*'),
-      client.from('sponsors').select('*'),
+    ]);
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout ao conectar com Supabase')), 3000)
+    );
+
+    const [resClasses, resStudents, resSessions, resNotifs] = await Promise.race([
+      fetchPromise,
+      timeoutPromise,
     ]);
 
     let changed = false;
 
-    if (resClasses.data && Array.isArray(resClasses.data) && resClasses.data.length > 0) {
+    if (resClasses?.data && Array.isArray(resClasses.data) && resClasses.data.length > 0) {
       inMemoryState.data.classes = resClasses.data.map(normalizeClass);
       changed = true;
     }
 
-    if (resStudents.data && Array.isArray(resStudents.data) && resStudents.data.length > 0) {
+    if (resStudents?.data && Array.isArray(resStudents.data) && resStudents.data.length > 0) {
       inMemoryState.data.students = resStudents.data.map(normalizeStudent);
       changed = true;
     }
 
-    if (resSessions.data && Array.isArray(resSessions.data) && resSessions.data.length > 0) {
+    if (resSessions?.data && Array.isArray(resSessions.data) && resSessions.data.length > 0) {
       inMemoryState.data.sessions = resSessions.data.map(normalizeSession);
       changed = true;
     }
 
-    if (resNotifs.data && Array.isArray(resNotifs.data) && resNotifs.data.length > 0) {
+    if (resNotifs?.data && Array.isArray(resNotifs.data) && resNotifs.data.length > 0) {
       inMemoryState.data.notifications = resNotifs.data.map(normalizeNotification);
       changed = true;
     }
 
-    if (resSponsors.data && Array.isArray(resSponsors.data) && resSponsors.data.length > 0) {
-      inMemoryState.data.sponsors = resSponsors.data.map(normalizeSponsor);
-      changed = true;
+    try {
+      const resSponsors = await client.from('sponsors').select('*');
+      if (resSponsors?.data && Array.isArray(resSponsors.data) && resSponsors.data.length > 0) {
+        inMemoryState.data.sponsors = resSponsors.data.map(normalizeSponsor);
+        changed = true;
+      }
+    } catch {
+      // Tabela de sponsors opcional
     }
 
     lastSupabaseFetchTime = now;
@@ -232,7 +245,7 @@ export async function fetchFromSupabaseOnServer(force = false): Promise<SharedSt
       writeSharedState(inMemoryState);
     }
   } catch (err) {
-    console.warn('Aviso: Falha ao consultar Supabase no servidor, usando cache local:', err);
+    console.warn('Aviso: Falha ou timeout ao consultar Supabase no servidor, usando cache local:', err);
     readSharedState();
   }
 
@@ -277,7 +290,15 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
       await client.from('classes').upsert(formattedClasses, { onConflict: 'id' });
     }
 
+    // Buscar lista de turmas existentes no Supabase para garantir integridade referencial das FKs
+    const { data: dbClasses } = await client.from('classes').select('id');
+    const validClassIds = new Set<string>([
+      ...(data.classes && Array.isArray(data.classes) ? data.classes.map((c: any) => String(c.id)) : []),
+      ...(dbClasses || []).map((c: { id: string }) => String(c.id)),
+    ]);
+
     // 2. Alunos e Matrículas
+    let validStudentIds = new Set<string>();
     if (data.students && Array.isArray(data.students) && data.students.length > 0) {
       const formattedStudents = data.students.map((s: any) => ({
         id: String(s.id),
@@ -291,7 +312,9 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
         level: s.level || s.level || 'Iniciante',
         height_cm: s.heightCm || s.height_cm || null,
         jersey_number: s.jerseyNumber || s.jersey_number || null,
-        class_id: s.classId || s.class_id || null,
+        class_id: (s.classId || s.class_id) && validClassIds.has(String(s.classId || s.class_id))
+          ? String(s.classId || s.class_id)
+          : null,
         status: s.status || 'Ativo',
         enrollment_date: s.enrollmentDate || s.enrollment_date,
         medical_conditions: s.medicalConditions || s.medical_conditions || null,
@@ -309,29 +332,38 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
         updated_at: new Date().toISOString(),
       }));
 
+      validStudentIds = new Set<string>(formattedStudents.map((s: any) => s.id));
       await client.from('students').upsert(formattedStudents, { onConflict: 'id' });
     }
 
-    // 3. Chamadas de Presença
+    // 3. Chamadas de Presença - apenas sessões com turmas válidas
     if (data.sessions && Array.isArray(data.sessions) && data.sessions.length > 0) {
-      const formattedSessions = data.sessions.map((sess: any) => ({
-        id: sess.id,
-        class_id: sess.classId || sess.class_id,
-        date: sess.date,
-        instructor_name: sess.instructorName || sess.instructor_name,
-        entries: sess.entries || {},
-        saved_at: sess.savedAt || sess.saved_at || new Date().toISOString(),
-        shift: sess.shift || 'Tarde',
-      }));
+      const validSessions = data.sessions.filter(
+        (sess: any) => sess && (sess.classId || sess.class_id) && validClassIds.has(String(sess.classId || sess.class_id))
+      );
 
-      await client.from('attendance_sessions').upsert(formattedSessions, { onConflict: 'id' });
+      if (validSessions.length > 0) {
+        const formattedSessions = validSessions.map((sess: any) => ({
+          id: sess.id,
+          class_id: String(sess.classId || sess.class_id),
+          date: sess.date,
+          instructor_name: sess.instructorName || sess.instructor_name,
+          entries: sess.entries || {},
+          saved_at: sess.savedAt || sess.saved_at || new Date().toISOString(),
+          shift: sess.shift || 'Tarde',
+        }));
+
+        await client.from('attendance_sessions').upsert(formattedSessions, { onConflict: 'id' });
+      }
     }
 
     // 4. Notificações aos Pais
     if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
       const formattedNotifs = data.notifications.map((n: any) => ({
         id: n.id,
-        student_id: n.studentId || n.student_id,
+        student_id: (n.studentId || n.student_id) && validStudentIds.has(String(n.studentId || n.student_id))
+          ? String(n.studentId || n.student_id)
+          : null,
         student_name: n.studentName || n.student_name,
         guardian_name: n.guardianName || n.guardian_name,
         guardian_phone: n.guardianPhone || n.guardian_phone,
