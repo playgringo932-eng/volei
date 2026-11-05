@@ -10,6 +10,13 @@ import {
   DEFAULT_SUPABASE_ANON_KEY,
   SharedState,
 } from '@/lib/serverSharedState';
+import {
+  normalizeStudent,
+  normalizeClass,
+  normalizeSession,
+  normalizeNotification,
+} from '@/lib/normalization';
+import { Student, VolleyballClass, DailyAttendanceSession, NotificationLog } from '@/types/volleyball';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +27,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    const state = await fetchFromSupabaseOnServer();
+    const state = await fetchFromSupabaseOnServer(true);
     return NextResponse.json({
       success: true,
       config: state.config,
@@ -28,6 +35,7 @@ export async function GET() {
       data: state.data,
     });
   } catch (err) {
+    console.error('GET /api/sync fallback error:', err);
     const fallback = readSharedState();
     return NextResponse.json({
       success: true,
@@ -40,15 +48,77 @@ export async function GET() {
 
 /**
  * POST /api/sync
- * Atualiza senha de administrador, credenciais e/ou dados em todos os aparelhos
- * salvando no cache local e persistindo no banco de dados Supabase em nuvem.
+ * Atualiza dados entre dispositivos usando fusão não-destrutiva por ID,
+ * garantindo que nenhum aluno ou turma seja apagado acidentalmente por abas ou celulares desatualizados.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const current = readSharedState();
+    const current = await fetchFromSupabaseOnServer();
 
     const nowIso = new Date().toISOString();
+
+    // Fusão inteligente e aditiva de Alunos (nunca perde alunos criados no Supabase)
+    let updatedStudents: Student[] = current.data.students || [];
+    if (body.data?.students && Array.isArray(body.data.students)) {
+      const studentMap = new Map<string, Student>();
+      (current.data.students || []).forEach((s) => studentMap.set(s.id, normalizeStudent(s)));
+      body.data.students.forEach((s: any) => {
+        if (s && s.id) {
+          studentMap.set(String(s.id), normalizeStudent(s));
+        }
+      });
+      if (body.data.deletedStudentId) {
+        studentMap.delete(String(body.data.deletedStudentId));
+      }
+      updatedStudents = Array.from(studentMap.values());
+    } else if (body.data?.deletedStudentId) {
+      updatedStudents = (current.data.students || []).filter((s) => s.id !== String(body.data.deletedStudentId));
+    }
+
+    // Fusão inteligente e aditiva de Turmas
+    let updatedClasses: VolleyballClass[] = current.data.classes || [];
+    if (body.data?.classes && Array.isArray(body.data.classes)) {
+      const classMap = new Map<string, VolleyballClass>();
+      (current.data.classes || []).forEach((c) => classMap.set(c.id, normalizeClass(c)));
+      body.data.classes.forEach((c: any) => {
+        if (c && c.id) {
+          classMap.set(String(c.id), normalizeClass(c));
+        }
+      });
+      if (body.data.deletedClassId) {
+        classMap.delete(String(body.data.deletedClassId));
+      }
+      updatedClasses = Array.from(classMap.values());
+    } else if (body.data?.deletedClassId) {
+      updatedClasses = (current.data.classes || []).filter((c) => c.id !== String(body.data.deletedClassId));
+    }
+
+    // Fusão inteligente de Sessões de Presença
+    let updatedSessions: DailyAttendanceSession[] = current.data.sessions || [];
+    if (body.data?.sessions && Array.isArray(body.data.sessions)) {
+      const sessionMap = new Map<string, DailyAttendanceSession>();
+      (current.data.sessions || []).forEach((sess) => sessionMap.set(sess.id, normalizeSession(sess)));
+      body.data.sessions.forEach((sess: any) => {
+        if (sess && sess.id) {
+          sessionMap.set(String(sess.id), normalizeSession(sess));
+        }
+      });
+      updatedSessions = Array.from(sessionMap.values());
+    }
+
+    // Fusão inteligente de Notificações
+    let updatedNotifications: NotificationLog[] = current.data.notifications || [];
+    if (body.data?.notifications && Array.isArray(body.data.notifications)) {
+      const notifMap = new Map<string, NotificationLog>();
+      (current.data.notifications || []).forEach((n) => notifMap.set(n.id, normalizeNotification(n)));
+      body.data.notifications.forEach((n: any) => {
+        if (n && n.id) {
+          notifMap.set(String(n.id), normalizeNotification(n));
+        }
+      });
+      updatedNotifications = Array.from(notifMap.values());
+    }
 
     const updatedState: SharedState = {
       config: {
@@ -63,31 +133,35 @@ export async function POST(req: NextRequest) {
         password: body.adminAuth?.password?.trim() ?? current.adminAuth.password,
         updatedAt: body.adminAuth?.password ? nowIso : current.adminAuth.updatedAt,
       },
-      data: body.data
-        ? {
-            students: body.data.students ?? current.data.students,
-            classes: body.data.classes ?? current.data.classes,
-            sessions: body.data.sessions ?? current.data.sessions,
-            notifications: body.data.notifications ?? current.data.notifications,
-            sponsors: body.data.sponsors ?? current.data.sponsors,
-            sponsorSize: body.data.sponsorSize ?? current.data.sponsorSize,
-            updatedAt: nowIso,
-          }
-        : current.data,
+      data: {
+        students: updatedStudents,
+        classes: updatedClasses,
+        sessions: updatedSessions,
+        notifications: updatedNotifications,
+        sponsors: body.data?.sponsors ?? current.data.sponsors,
+        sponsorSize: body.data?.sponsorSize ?? current.data.sponsorSize,
+        updatedAt: nowIso,
+      },
     };
 
     writeSharedState(updatedState);
 
-    // Persiste também no Supabase em segundo plano
+    // Persiste também no Supabase em segundo plano com a versão mesclada e íntegra
     if (body.data) {
-      saveToSupabaseOnServer(body.data).catch((e) => {
+      saveToSupabaseOnServer({
+        ...body.data,
+        students: updatedStudents,
+        classes: updatedClasses,
+        sessions: updatedSessions,
+        notifications: updatedNotifications,
+      }).catch((e) => {
         console.warn('Erro assíncrono ao salvar no Supabase:', e);
       });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Sincronização entre dispositivos atualizada com sucesso no servidor e na nuvem!',
+      message: 'Sincronização entre dispositivos atualizada com segurança sem perda de dados!',
       config: updatedState.config,
       adminAuth: updatedState.adminAuth,
       updatedAt: nowIso,

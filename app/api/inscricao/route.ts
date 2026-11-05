@@ -3,6 +3,9 @@ import {
   readSharedState,
   writeSharedState,
   fetchFromSupabaseOnServer,
+  getSupabaseServerClient,
+  DEFAULT_SUPABASE_URL,
+  DEFAULT_SUPABASE_ANON_KEY,
 } from '@/lib/serverSharedState';
 import { calculateAge, getCategoryByAge } from '@/lib/volleyballHelpers';
 import { Student, NotificationLog } from '@/types/volleyball';
@@ -36,7 +39,7 @@ export async function GET() {
       success: true,
       classes: classesWithOccupancy,
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { success: false, message: 'Erro ao carregar turmas disponíveis.' },
       { status: 500 }
@@ -46,7 +49,8 @@ export async function GET() {
 
 /**
  * POST /api/inscricao
- * Processa a inscrição pública de um novo atleta e salva no sistema oficial
+ * Processa a inscrição pública de um novo atleta, garante número de matrícula
+ * sequencial único sem conflito no Supabase e persiste imediatamente.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -92,36 +96,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const state = readSharedState();
-    const existingStudents = ((state.data?.students || []) as Student[]);
+    // 1. Atualiza e sincroniza estado mais recente do Supabase
+    const state = await fetchFromSupabaseOnServer(true);
 
-    // Gera o próximo número de matrícula oficial sequencial (ex: VOL-2026-009)
-    let nextSeq = 1;
-    existingStudents.forEach((st) => {
-      const match = (st.registrationNumber || '').match(/(\d+)$/);
+    const rawUrl = state.config?.url || process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+    const supabaseUrl = (rawUrl && rawUrl.startsWith('http')) ? rawUrl : DEFAULT_SUPABASE_URL;
+    const rawKey = state.config?.anonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+    const supabaseKey = (rawKey && rawKey.length > 20) ? rawKey : DEFAULT_SUPABASE_ANON_KEY;
+
+    let client = getSupabaseServerClient();
+    if (!client && supabaseUrl && supabaseKey) {
+      client = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false },
+      });
+    }
+
+    // 2. Consulta TODOS os números de matrícula já existentes no Supabase e no cache
+    const existingRegNumbers = new Set<string>();
+
+    if (client) {
+      try {
+        const { data: dbStudents } = await client
+          .from('students')
+          .select('id, registration_number');
+        if (dbStudents && Array.isArray(dbStudents)) {
+          dbStudents.forEach((st: { registration_number?: string }) => {
+            if (st.registration_number) existingRegNumbers.add(st.registration_number);
+          });
+        }
+      } catch (err) {
+        console.warn('Aviso: Falha ao ler matriculas do Supabase:', err);
+      }
+    }
+
+    // Inclui matrículas do estado em memória
+    ((state.data?.students || []) as Student[]).forEach((st) => {
+      if (st.registrationNumber) existingRegNumbers.add(st.registrationNumber);
+    });
+
+    // Calcula o maior número sequencial existente (ex: VOL-2026-005 -> 5)
+    let maxSeq = 0;
+    existingRegNumbers.forEach((reg) => {
+      const match = reg.match(/(\d+)$/);
       if (match) {
-        const val = parseInt(match[1], 10);
-        if (!isNaN(val) && val >= nextSeq) {
-          nextSeq = val + 1;
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
         }
       }
     });
 
-    const regNumber = `VOL-2026-${String(nextSeq).padStart(3, '0')}`;
+    let candidateSeq = maxSeq + 1;
     const studentId = `std_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const category = getCategoryByAge(age);
 
-    // Validação de Turma Válida
+    // Validação estrita da Turma para integridade referencial de chave estrangeira
     const existingClasses = (state.data?.classes || []) as any[];
-    const validClassIds = new Set(existingClasses.map((c) => String(c.id)));
+    let validClassIds = new Set(existingClasses.map((c) => String(c.id)));
+
+    if (client) {
+      try {
+        const { data: dbClasses } = await client.from('classes').select('id');
+        if (dbClasses && Array.isArray(dbClasses)) {
+          dbClasses.forEach((c: { id: string }) => validClassIds.add(String(c.id)));
+        }
+      } catch {
+        // use local
+      }
+    }
+
     const requestedClassId = body.classId ? String(body.classId) : '';
     const assignedClassId = requestedClassId && validClassIds.has(requestedClassId)
       ? requestedClassId
-      : (existingClasses.length > 0 ? String(existingClasses[0].id) : null);
+      : (validClassIds.size > 0 ? Array.from(validClassIds)[0] : null);
 
     const newStudent: Student = {
       id: studentId,
-      registrationNumber: regNumber,
+      registrationNumber: `VOL-2026-${String(candidateSeq).padStart(3, '0')}`,
       fullName,
       birthDate,
       age,
@@ -144,50 +195,25 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    // Notificação de boas-vindas
-    const welcomeNotif: NotificationLog = {
-      id: `notif_${Date.now()}`,
-      studentId: newStudent.id,
-      studentName: newStudent.fullName,
-      guardianName: newStudent.guardian.name,
-      guardianPhone: newStudent.guardian.phone,
-      type: 'Boas-Vindas Matrícula',
-      message: `Bem-vindo(a) à Academia VoleiAraça! A matrícula ${newStudent.registrationNumber} foi confirmada com sucesso para o atleta ${newStudent.fullName} na categoria ${newStudent.category}.`,
-      channel: 'WhatsApp',
-      sentAt: new Date().toISOString(),
-      status: 'Enviado',
-    };
+    // 3. Salva no banco de dados Supabase com loop anti-colisão de chave única (ex: 23505)
+    let saveSucceeded = false;
+    let finalRegNumber = newStudent.registrationNumber;
+    let lastError: any = null;
 
-    // Salva no estado compartilhado do servidor
-    const updatedStudents = [newStudent, ...existingStudents];
-    const updatedNotifications = [welcomeNotif, ...(state.data?.notifications || [])];
+    if (client) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        finalRegNumber = `VOL-2026-${String(candidateSeq).padStart(3, '0')}`;
+        newStudent.registrationNumber = finalRegNumber;
 
-    state.data = {
-      ...state.data,
-      students: updatedStudents,
-      notifications: updatedNotifications,
-      updatedAt: new Date().toISOString(),
-    };
-
-    writeSharedState(state);
-
-    // Salva automaticamente no banco Supabase em nuvem
-    if (state.config?.url && state.config?.anonKey) {
-      try {
-        const client = createClient(state.config.url, state.config.anonKey, {
-          auth: { persistSession: false },
-        });
-
-        // 1. Salva aluno com o schema oficial exato da tabela students no Supabase
         const studentRecord = {
           id: newStudent.id,
-          registration_number: newStudent.registrationNumber,
+          registration_number: finalRegNumber,
           full_name: newStudent.fullName,
           birth_date: newStudent.birthDate,
           age: newStudent.age,
           gender: newStudent.gender,
           category: newStudent.category,
-          preferred_position: newStudent.preferredPosition || 'Em Formação Geral',
+          preferred_position: 'Em Formação Geral',
           level: 'Iniciante',
           height_cm: null,
           jersey_number: null,
@@ -206,14 +232,56 @@ export async function POST(req: NextRequest) {
 
         const { error: studentErr } = await client
           .from('students')
-          .upsert(studentRecord, { onConflict: 'id' });
+          .insert(studentRecord);
 
-        if (studentErr) {
-          console.error('Erro ao gravar aluno no Supabase:', studentErr);
+        if (!studentErr) {
+          saveSucceeded = true;
+          break;
         }
 
-        // 2. Salva notificação de boas-vindas no Supabase
-        const notifRecord = {
+        const errCode = String(studentErr.code || '');
+        const errMsg = String(studentErr.message || studentErr.details || '');
+
+        // Conflito de unicidade de matrícula (código PostgreSQL 23505)
+        if (errCode === '23505' || errMsg.includes('unique constraint') || errMsg.includes('registration_number')) {
+          console.warn(`[Inscrição] Conflito de matrícula ${finalRegNumber}. Incrementando para ${candidateSeq + 1}...`);
+          candidateSeq++;
+          continue;
+        }
+
+        lastError = studentErr;
+        console.error('[Inscrição] Erro no Supabase:', studentErr);
+        break;
+      }
+
+      if (!saveSucceeded && lastError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Erro ao salvar no banco de dados Supabase: ${lastError.message || 'Falha ao gravar matrícula.'}`,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // 4. Cria e persiste notificação de boas-vindas
+    const welcomeNotif: NotificationLog = {
+      id: `notif_${Date.now()}`,
+      studentId: newStudent.id,
+      studentName: newStudent.fullName,
+      guardianName: newStudent.guardian.name,
+      guardianPhone: newStudent.guardian.phone,
+      type: 'Boas-Vindas Matrícula',
+      message: `Bem-vindo(a) à Academia VoleiAraça! A matrícula ${newStudent.registrationNumber} foi confirmada com sucesso para o atleta ${newStudent.fullName} na categoria ${newStudent.category}.`,
+      channel: 'WhatsApp',
+      sentAt: new Date().toISOString(),
+      status: 'Enviado',
+    };
+
+    if (client) {
+      try {
+        await client.from('notifications').insert({
           id: welcomeNotif.id,
           student_id: newStudent.id,
           student_name: newStudent.fullName,
@@ -225,23 +293,38 @@ export async function POST(req: NextRequest) {
           channel: welcomeNotif.channel,
           sent_at: welcomeNotif.sentAt,
           status: welcomeNotif.status,
-        };
-
-        await client
-          .from('notifications')
-          .upsert(notifRecord, { onConflict: 'id' });
+        });
       } catch (err) {
-        console.warn('Aviso: Falha ao persistir inscrição no Supabase:', err);
+        console.warn('Aviso: Falha ao gravar notificação:', err);
       }
     }
 
+    // 5. Atualiza o estado compartilhado em memória e o arquivo de cache primário
+    const studentMap = new Map<string, Student>();
+    studentMap.set(newStudent.id, newStudent);
+    ((state.data?.students || []) as Student[]).forEach((s) => {
+      if (!studentMap.has(s.id)) {
+        studentMap.set(s.id, s);
+      }
+    });
+
+    state.data = {
+      ...state.data,
+      students: Array.from(studentMap.values()),
+      notifications: [welcomeNotif, ...(state.data?.notifications || [])],
+      updatedAt: new Date().toISOString(),
+    };
+
+    writeSharedState(state);
+
     return NextResponse.json({
       success: true,
-      message: 'Inscrição oficial realizada com sucesso!',
+      message: 'Inscrição oficial realizada com sucesso e salva no banco de dados!',
       student: newStudent,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error('Erro ao processar inscrição:', err);
     return NextResponse.json(
       { success: false, message: `Erro ao processar inscrição: ${msg}` },
       { status: 500 }

@@ -148,8 +148,7 @@ export default function PublicEnrollmentPage() {
       if (json.success && json.student) {
         setCreatedStudent(json.student);
         try {
-          storageService.addStudent(json.student);
-          storageService.pullFromSharedSync(true);
+          await storageService.pullFromSharedSync(true);
         } catch {
           // fallback
         }

@@ -72,28 +72,41 @@ let inMemoryState: SharedState = {
     updatedAt: new Date().toISOString(),
   },
   data: {
-    students: INITIAL_STUDENTS.map(normalizeStudent),
-    classes: INITIAL_CLASSES.map(normalizeClass),
+    students: [],
+    classes: [],
     sessions: [],
-    notifications: INITIAL_NOTIFICATIONS.map(normalizeNotification),
+    notifications: [],
     sponsors: DEFAULT_SPONSORS.map(normalizeSponsor),
     sponsorSize: 28,
     updatedAt: new Date().toISOString(),
   },
 };
 
+// Carrega imediatamente o cache do disco se existir
+try {
+  readSharedState();
+} catch {
+  // ignora
+}
+
 let serverSupabaseClient: SupabaseClient | null = null;
 let lastSupabaseFetchTime = 0;
 
 export function getSupabaseServerClient(): SupabaseClient | null {
-  const url = inMemoryState.config?.url || DEFAULT_SUPABASE_URL;
-  const anonKey = inMemoryState.config?.anonKey || DEFAULT_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
+  const rawUrl = inMemoryState.config?.url || DEFAULT_SUPABASE_URL;
+  const url = (rawUrl && rawUrl.startsWith('http')) ? rawUrl : DEFAULT_SUPABASE_URL;
+  const rawKey = inMemoryState.config?.anonKey || DEFAULT_SUPABASE_ANON_KEY;
+  const anonKey = (rawKey && rawKey.length > 20) ? rawKey : DEFAULT_SUPABASE_ANON_KEY;
 
   if (!serverSupabaseClient) {
-    serverSupabaseClient = createClient(url, anonKey, {
-      auth: { persistSession: false },
-    });
+    try {
+      serverSupabaseClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+      });
+    } catch (err) {
+      console.error('Falha ao inicializar client Supabase no servidor:', err);
+      return null;
+    }
   }
   return serverSupabaseClient;
 }
@@ -181,7 +194,6 @@ export function writeSharedState(state: SharedState): void {
  */
 export async function fetchFromSupabaseOnServer(force = false): Promise<SharedState> {
   const now = Date.now();
-  // Cache leve de 1,5 segundos para evitar chamadas redundantes em rajada
   if (!force && now - lastSupabaseFetchTime < 1500) {
     return inMemoryState;
   }
@@ -198,7 +210,7 @@ export async function fetchFromSupabaseOnServer(force = false): Promise<SharedSt
     ]);
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout ao conectar com Supabase')), 3000)
+      setTimeout(() => reject(new Error('Timeout ao conectar com Supabase')), 10000)
     );
 
     const [resClasses, resStudents, resSessions, resNotifs] = await Promise.race([
@@ -262,10 +274,14 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
   try {
     const rawData = data as any;
     if (rawData.deletedClassId) {
-      await client.from('classes').delete().eq('id', String(rawData.deletedClassId));
+      const clsId = String(rawData.deletedClassId);
+      inMemoryState.data.classes = inMemoryState.data.classes.filter((c) => c.id !== clsId);
+      await client.from('classes').delete().eq('id', clsId);
     }
     if (rawData.deletedStudentId) {
-      await client.from('students').delete().eq('id', String(rawData.deletedStudentId));
+      const stdId = String(rawData.deletedStudentId);
+      inMemoryState.data.students = inMemoryState.data.students.filter((s) => s.id !== stdId);
+      await client.from('students').delete().eq('id', stdId);
     }
 
     // 1. Turmas e Turnos

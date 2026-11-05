@@ -488,7 +488,11 @@ export function VolleyballAcademyMain() {
         onSaveStudent={handleSaveStudent}
         classes={classes}
         studentToEdit={studentToEdit}
-        existingStudentsCount={students.length}
+        existingStudentsCount={students.reduce((acc, s) => {
+          const m = (s.registrationNumber || '').match(/(\d+)$/);
+          const n = m ? parseInt(m[1], 10) : 0;
+          return Math.max(acc, isNaN(n) ? 0 : n);
+        }, students.length)}
       />
 
       {/* Modal: Detalhes do Aluno */}

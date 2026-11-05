@@ -645,14 +645,28 @@ export const storageService = {
       }
 
       let changed = false;
-      if (json.data.students && Array.isArray(json.data.students) && json.data.students.length > 0) {
-        const normalized = json.data.students.map(normalizeStudent);
-        this.saveStudents(normalized, false);
+      if (json.data.students && Array.isArray(json.data.students)) {
+        const studentMap = new Map<string, Student>();
+        json.data.students.map(normalizeStudent).forEach((s: Student) => studentMap.set(s.id, s));
+        currentStudents.forEach((localS) => {
+          if (!studentMap.has(localS.id)) {
+            studentMap.set(localS.id, localS);
+          }
+        });
+        const merged = Array.from(studentMap.values());
+        this.saveStudents(merged, false);
         changed = true;
       }
       if (json.data.classes && Array.isArray(json.data.classes) && json.data.classes.length > 0) {
-        const normalized = json.data.classes.map(normalizeClass);
-        this.saveClasses(normalized, false);
+        const classMap = new Map<string, VolleyballClass>();
+        json.data.classes.map(normalizeClass).forEach((c: VolleyballClass) => classMap.set(c.id, c));
+        currentClasses.forEach((localC) => {
+          if (!classMap.has(localC.id)) {
+            classMap.set(localC.id, localC);
+          }
+        });
+        const mergedClasses = Array.from(classMap.values());
+        this.saveClasses(mergedClasses, false);
         changed = true;
       }
       if (json.data.sessions && Array.isArray(json.data.sessions) && json.data.sessions.length > 0) {

@@ -13,7 +13,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Student, VolleyballClass, EnrollmentStatus } from '@/types/volleyball';
-import { validateStudentAge, formatBRPhone, generateRegistrationCode } from '@/lib/volleyballHelpers';
+import { validateStudentAge, formatBRPhone, generateRegistrationCode, generateNextRegistrationCode } from '@/lib/volleyballHelpers';
 import { readFileAsBase64, getAthletePhoto } from '@/lib/avatarHelpers';
 import { Camera } from 'lucide-react';
 
@@ -109,7 +109,7 @@ function StudentForm({
       id: studentToEdit ? studentToEdit.id : `std-${Date.now()}`,
       registrationNumber: studentToEdit
         ? studentToEdit.registrationNumber
-        : generateRegistrationCode(existingStudentsCount + 1),
+        : generateNextRegistrationCode(existingStudentsCount + 1),
       fullName: fullName.trim(),
       birthDate,
       age: ageValidation.age,

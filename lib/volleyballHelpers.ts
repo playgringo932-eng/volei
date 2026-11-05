@@ -116,8 +116,31 @@ export function createWhatsAppLink(phone: string, message: string): string {
  */
 export function generateRegistrationCode(index: number): string {
   const year = new Date().getFullYear();
-  const num = String(index).padStart(3, '0');
+  const num = String(Math.max(1, index)).padStart(3, '0');
   return `VOL-${year}-${num}`;
+}
+
+/**
+ * Calculates the next unique sequential registration code by inspecting existing student numbers
+ */
+export function generateNextRegistrationCode(
+  existingStudentsOrCount: { registrationNumber?: string }[] | number = 0
+): string {
+  const year = new Date().getFullYear();
+  if (typeof existingStudentsOrCount === 'number') {
+    return `VOL-${year}-${String(Math.max(1, existingStudentsOrCount)).padStart(3, '0')}`;
+  }
+  let maxSeq = 0;
+  existingStudentsOrCount.forEach((st) => {
+    const match = (st.registrationNumber || '').match(/(\d+)$/);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      if (!isNaN(val) && val > maxSeq) {
+        maxSeq = val;
+      }
+    }
+  });
+  return `VOL-${year}-${String(maxSeq + 1).padStart(3, '0')}`;
 }
 
 let notifCounter = 0;
