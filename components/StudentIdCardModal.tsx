@@ -77,6 +77,7 @@ export function StudentIdCardModal({
   const [isSponsorsModalOpen, setIsSponsorsModalOpen] = useState(false);
   const [sponsorsList, setSponsorsList] = useState<SponsorLogo[]>(() => storageService.getSponsors());
   const [sponsorSize, setSponsorSize] = useState<number>(() => storageService.getSponsorSize());
+  const [versoMode, setVersoMode] = useState<'sponsors' | 'giantQr'>('sponsors');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeSponsors = sponsorsList.filter((s) => s.isActive);
@@ -169,8 +170,8 @@ export function StudentIdCardModal({
   const studentPhoto = currentStudent.photoUrl || getAthletePhoto(currentStudent.fullName, currentStudent.gender, currentStudent.jerseyNumber);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:static">
-      <div className="bg-white border-2 border-blue-600 rounded-3xl w-full max-w-4xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto print:border-none print:shadow-none print:max-w-none print:max-h-none print:overflow-visible">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto print:p-0 print:m-0 print:bg-transparent print:static print:overflow-visible print:block">
+      <div className="bg-white border-2 border-blue-600 rounded-3xl w-full max-w-4xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden my-auto print:border-none print:shadow-none print:max-w-none print:max-h-none print:overflow-visible print:p-0 print:m-0 print:bg-transparent">
         {/* Modal Top Bar - Hidden in Print */}
         <div className="p-4 sm:p-5 bg-blue-700 text-white flex items-center justify-between border-b-2 border-blue-800 print:hidden shrink-0">
           <div className="flex items-center gap-3">
@@ -254,7 +255,7 @@ export function StudentIdCardModal({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 print:p-0 print:overflow-visible">
-          {/* Print Styles for exact 102mm x 68mm Brazilian RG standard */}
+          {/* Print Styles: Isolates STRICTLY the ID cards (102mm x 68mm) and hides everything else */}
           <style
             dangerouslySetInnerHTML={{
               __html: `
@@ -263,11 +264,46 @@ export function StudentIdCardModal({
                 size: A4 portrait;
                 margin: 8mm;
               }
-              body {
-                background: white !important;
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
+              /* 1. Oculta rigorosamente tudo na tela */
+              body * {
+                visibility: hidden !important;
+              }
+              /* 2. Torna visível unicamente o contêiner das carteirinhas */
+              #only-cards-print-container,
+              #only-cards-print-container * {
+                visibility: visible !important;
+              }
+              /* 3. Posiciona o contêiner das carteirinhas no topo da folha */
+              #only-cards-print-container {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                z-index: 999999 !important;
+              }
+              .id-card-outer-frame {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 auto !important;
+                box-shadow: none !important;
+              }
+              /* 4. Dimensões oficiais e acabamento de corte do RG (102mm x 68mm) */
               .id-card-rg {
                 width: 102mm !important;
                 height: 68mm !important;
@@ -278,8 +314,30 @@ export function StudentIdCardModal({
                 box-sizing: border-box !important;
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
+                border: 1.5pt solid #1e3a8a !important;
+                border-radius: 4mm !important;
+                box-shadow: none !important;
+                margin: 0 auto !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+              }
+              .id-cards-print-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                gap: 6mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                border: none !important;
+                background: transparent !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              .batch-student-page {
+                break-after: page !important;
+                page-break-after: always !important;
+                margin-bottom: 0 !important;
               }
             }
           `,
@@ -348,6 +406,19 @@ export function StudentIdCardModal({
               </button>
 
               <button
+                onClick={() => setVersoMode(versoMode === 'sponsors' ? 'giantQr' : 'sponsors')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-2xs transition-all cursor-pointer ${
+                  versoMode === 'giantQr'
+                    ? 'bg-blue-800 text-white border-2 border-blue-900 ring-2 ring-blue-300'
+                    : 'bg-white border border-blue-300 text-blue-900 hover:bg-blue-50'
+                }`}
+                title="Alternar Verso entre Patrocinadores ou QR Code Gigante"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>{versoMode === 'giantQr' ? 'Verso: QR Gigante (Ativo)' : 'Verso: QR Gigante'}</span>
+              </button>
+
+              <button
                 onClick={handleForceSync}
                 disabled={isSyncing}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-300 hover:bg-blue-50 text-blue-900 font-bold text-xs shadow-2xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
@@ -413,25 +484,25 @@ export function StudentIdCardModal({
             🪪 <strong>Padrão Oficial de RG Brasileiro (102 mm × 68 mm):</strong> Frente e Verso proporcionais para corte exato e plastificação em polaseal padrão de identidade.
           </div>
 
-          {/* RENDER CARD(S) */}
-          <div className="space-y-8">
+          {/* RENDER CARD(S) - Wrapped in #only-cards-print-container to strictly print ONLY the cards */}
+          <div id="only-cards-print-container" className="space-y-8">
             {(isBatchMode ? allStudents : [currentStudent]).map((st, idx) => {
               const cls = classes.find((c) => c.id === st.classId);
               const photo = st.photoUrl || getAthletePhoto(st.fullName, st.gender, st.jerseyNumber);
 
               return (
-                <div key={st.id} className="page-break-inside-avoid">
+                <div key={st.id} className="batch-student-page page-break-inside-avoid">
                   {/* Outer Demarcated Cut Frame with DOM ID for Export */}
                   <div
                     id={`id-card-frame-${st.id}`}
-                    className="p-3 sm:p-5 bg-slate-50/70 rounded-2xl border-2 border-dashed border-blue-400 max-w-4xl mx-auto shadow-xs relative print:p-0 print:border-none print:bg-transparent"
+                    className="id-card-outer-frame p-3 sm:p-5 bg-slate-50/70 rounded-2xl border-2 border-dashed border-blue-400 max-w-4xl mx-auto shadow-xs relative print:p-0 print:border-none print:bg-transparent print:shadow-none print:m-0"
                   >
                     {/* Demarcation label */}
                     <div className="absolute -top-3 left-4 px-3 py-0.5 bg-blue-700 text-white text-[10px] font-black rounded-full uppercase tracking-wider print:hidden shadow-xs">
                       Tamanho Oficial RG (102mm × 68mm) #{idx + 1}
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6 print:gap-4 overflow-x-auto py-2">
+                    <div className="id-cards-print-grid flex flex-wrap items-center justify-center gap-5 sm:gap-6 print:gap-4 overflow-x-auto py-2 print:py-0">
                       {/* ================= FRENTE DA CARTEIRINHA (102mm x 68mm) ================= */}
                       <div
                         id={`id-card-front-${st.id}`}
@@ -478,94 +549,95 @@ export function StudentIdCardModal({
                           </span>
                         </div>
 
-                        {/* Corpo Central Frente: Foto 3x4 + Dados do Aluno + QR Code de Presença (52.5mm) */}
-                        <div className="px-2.5 py-1.5 relative z-10 flex-1 flex items-center gap-2.5 overflow-hidden">
-                          {/* 1. Foto 3x4 Proporcional do Atleta */}
-                          <div className="relative shrink-0">
-                            <div
-                              style={{ width: '23mm', height: '30.5mm' }}
-                              className="rounded-lg border-2 border-blue-700 overflow-hidden bg-blue-50 shadow-xs flex items-center justify-center shrink-0"
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={photo}
-                                alt={st.fullName}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            {st.jerseyNumber && (
-                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-blue-800 text-white font-black text-[9px] flex items-center justify-center border border-white shadow-xs">
-                                #{st.jerseyNumber}
+                        {/* Corpo Central Frente: Foto + Dados Oficiais (Esquerda) + QR Code GIGANTE (Direita - Ocupa mais de 42% da carteirinha) */}
+                        <div className="px-2 py-1 relative z-10 flex-1 flex items-center justify-between gap-2 overflow-hidden">
+                          {/* 1. Coluna Esquerda: Foto 3x4 + Identificação do Atleta (51mm) */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
+                            {/* Linha Superior: Foto 3x4 + Nome + Matrícula */}
+                            <div className="flex items-start gap-1.5">
+                              {/* Foto Proporcional do Atleta */}
+                              <div className="relative shrink-0">
+                                <div
+                                  style={{ width: '20mm', height: '27mm' }}
+                                  className="rounded-lg border-2 border-blue-700 overflow-hidden bg-blue-50 shadow-xs flex items-center justify-center shrink-0"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={photo}
+                                    alt={st.fullName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                {st.jerseyNumber && (
+                                  <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-blue-800 text-white font-black text-[8px] flex items-center justify-center border border-white shadow-xs">
+                                    #{st.jerseyNumber}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
 
-                          {/* 2. Dados do Atleta (Centro) */}
-                          <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
-                            <div>
-                              <span className="text-[6.5px] font-black text-blue-800 uppercase tracking-wider bg-blue-100/90 px-1.5 py-0.2 rounded border border-blue-300 inline-block mb-0.5">
-                                Atleta Oficial
-                              </span>
-                              <h3 className="font-black text-slate-900 text-[11px] leading-tight uppercase line-clamp-2">
-                                {st.fullName}
-                              </h3>
+                              {/* Nome do Atleta e Matrícula */}
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[6px] font-black text-blue-800 uppercase tracking-wider bg-blue-100/90 px-1 py-0.2 rounded border border-blue-300 inline-block mb-0.5">
+                                  Atleta Oficial
+                                </span>
+                                <h3 className="font-black text-slate-900 text-[9.5px] leading-tight uppercase line-clamp-2">
+                                  {st.fullName}
+                                </h3>
+                                <div className="mt-1">
+                                  <span className="text-[5.5px] font-black text-slate-500 uppercase tracking-wider block leading-none mb-0.5">
+                                    Matrícula Oficial:
+                                  </span>
+                                  <span className="font-mono text-[8.5px] font-black text-blue-950 bg-blue-50/90 px-1.5 py-0.5 rounded border border-blue-300 inline-block shadow-2xs tracking-wider">
+                                    {st.registrationNumber}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="text-[8px] text-slate-700 font-medium leading-tight">
-                              <span className="text-slate-500 font-bold">Idade:</span>{' '}
-                              <strong className="text-slate-900 font-extrabold">{st.age} anos</strong>
-                              {st.birthDate && (
-                                <span className="text-slate-500"> • Nasc: {st.birthDate.split('-').reverse().join('/')}</span>
+                            {/* Linha Inferior: Idade, Nascimento e Turma */}
+                            <div className="bg-slate-50/90 rounded-md p-1 border border-slate-200 text-[7px] space-y-0.5 mt-0.5">
+                              <div className="text-slate-700 font-medium leading-tight flex items-center justify-between">
+                                <span><strong className="text-slate-900 font-extrabold">{st.age} anos</strong> {st.birthDate && `• ${st.birthDate.split('-').reverse().join('/')}`}</span>
+                              </div>
+                              {cls?.name && (
+                                <div className="text-[6.5px] text-slate-600 truncate leading-tight">
+                                  <span className="text-slate-500 font-bold">Turma:</span> {cls.name}
+                                </div>
                               )}
                             </div>
-
-                            {cls?.name && (
-                              <div className="text-[7.5px] text-slate-600 truncate leading-tight">
-                                <span className="text-slate-500 font-bold">Turma:</span> {cls.name}
-                              </div>
-                            )}
-
-                            <div>
-                              <span className="text-[6.5px] font-black text-slate-500 uppercase tracking-wider block">
-                                Matrícula Oficial:
-                              </span>
-                              <span className="font-mono text-[9px] font-black text-blue-950 bg-blue-50/90 px-1.5 py-0.5 rounded border border-blue-300 inline-block shadow-2xs tracking-wider">
-                                {st.registrationNumber}
-                              </span>
-                            </div>
                           </div>
 
-                          {/* 3. QR Code de Presença (Direita) */}
+                          {/* 2. Coluna Direita: QR Code GIGANTE de Presença (Ocupa 43mm de largura x 51mm de altura - Destaque Máximo!) */}
                           <div
                             onClick={() => setShowBigQr(true)}
-                            style={{ width: '22mm', height: '30.5mm' }}
-                            className="bg-blue-50/90 border border-blue-400 rounded-lg p-1 flex flex-col items-center justify-between shrink-0 shadow-2xs cursor-pointer hover:bg-blue-100/80 transition-colors"
-                            title="QR Code Oficial — Clique para ampliar"
+                            style={{ width: '43mm', height: '51mm' }}
+                            className="bg-gradient-to-b from-blue-50 to-blue-100/95 border-2 border-blue-600 rounded-xl p-1 flex flex-col items-center justify-between shrink-0 shadow-md cursor-pointer hover:border-blue-800 transition-all hover:scale-[1.01]"
+                            title="QR Code Oficial de Presença — Clique para ampliar"
                           >
-                            <span className="text-[6.5px] font-black text-blue-950 uppercase tracking-wider flex items-center gap-0.5">
-                              <QrCode className="w-2.5 h-2.5 text-blue-700" />
-                              QR Presença
-                            </span>
+                            <div className="flex items-center justify-center gap-1 text-blue-950 font-black text-[7.5px] uppercase tracking-wider">
+                              <QrCode className="w-3 h-3 text-blue-700" />
+                              <span>QR Presença Oficial</span>
+                            </div>
 
-                            <div className="bg-white p-0.5 rounded-md border border-blue-300 shadow-2xs flex items-center justify-center">
+                            <div className="bg-white p-1 rounded-lg border-2 border-blue-500 shadow-xs flex items-center justify-center">
                               <QRCodeDisplay
                                 value={getStudentQrPayload(st, cls)}
-                                size={60}
-                                altText={`QR Code - ${st.fullName}`}
+                                size={135}
+                                altText={`QR Code Oficial - ${st.fullName}`}
                               />
                             </div>
 
-                            <span className="text-[6px] font-bold text-slate-500 text-center leading-none">
-                              Chamada Rápida
+                            <span className="text-[6.5px] font-black text-blue-900 text-center leading-none uppercase tracking-wide">
+                              Chamada • Acesso aos Treinos
                             </span>
                           </div>
                         </div>
 
-                        {/* Rodapé Frente (7mm) */}
-                        <div className="bg-slate-50 border-t border-slate-200 px-2.5 py-1 flex items-center justify-between text-[7px] text-slate-500 shrink-0 relative z-10">
+                        {/* Rodapé Frente (6mm) */}
+                        <div className="bg-slate-50 border-t border-slate-200 px-2.5 py-0.5 flex items-center justify-between text-[6.5px] text-slate-500 shrink-0 relative z-10">
                           <span className="font-bold text-slate-600">IDENTIFICAÇÃO OFICIAL DO ATLETA</span>
                           <span className="font-mono font-black text-blue-900">
-                            VAL: 31/12/2026
+                            VALIDADE: 31/12/2026
                           </span>
                         </div>
                       </div>
@@ -612,9 +684,39 @@ export function StudentIdCardModal({
                           </span>
                         </div>
 
-                        {/* Corpo Central Verso: Patrocinadores Oficiais Adaptados ao Tamanho RG (52.5mm) */}
-                        <div className="p-2 relative z-10 flex-1 flex flex-col justify-center overflow-hidden">
-                          {activeSponsors.length > 0 ? (
+                        {/* Corpo Central Verso: Patrocinadores OU QR Code Gigante Integral */}
+                        <div className="p-1.5 relative z-10 flex-1 flex flex-col justify-center overflow-hidden">
+                          {versoMode === 'giantQr' ? (
+                            <div
+                              onClick={() => setShowBigQr(true)}
+                              className="flex items-center justify-center gap-3 h-full cursor-pointer group"
+                              title="QR Code de Alta Performance — Ocupando o verso da carteirinha"
+                            >
+                              {/* QR Code Gigante com moldura branca */}
+                              <div className="bg-white p-1 rounded-xl border-2 border-white shadow-lg flex items-center justify-center shrink-0 group-hover:scale-[1.01] transition-transform">
+                                <QRCodeDisplay
+                                  value={getStudentQrPayload(st, cls)}
+                                  size={160}
+                                  altText={`QR Code Gigante - ${st.fullName}`}
+                                />
+                              </div>
+
+                              <div className="flex-1 min-w-0 text-left text-white space-y-1">
+                                <span className="text-[6.5px] uppercase font-black px-1.5 py-0.5 rounded bg-blue-500/80 text-blue-100 border border-blue-300/40 inline-block">
+                                  Controle de Presença
+                                </span>
+                                <h4 className="font-black text-[10.5px] uppercase leading-tight line-clamp-2 text-white">
+                                  {st.fullName}
+                                </h4>
+                                <div className="font-mono text-[9px] font-black text-blue-200">
+                                  Matrícula: {st.registrationNumber}
+                                </div>
+                                <div className="text-[7px] text-blue-200 uppercase font-bold leading-tight">
+                                  Aponte a câmera para registrar a frequência do treino
+                                </div>
+                              </div>
+                            </div>
+                          ) : activeSponsors.length > 0 ? (
                             <div
                               onClick={() => setIsSponsorsModalOpen(true)}
                               className="cursor-pointer group flex flex-col justify-center h-full"

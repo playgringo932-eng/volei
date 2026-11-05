@@ -35,6 +35,29 @@
         "cardValidUntil": "2026-12-31"
       },
       {
+        "id": "std_1793822993504_dodhw",
+        "registrationNumber": "VOL-2026-003",
+        "fullName": "Julia Santos Silva",
+        "birthDate": "2011-08-20",
+        "age": 15,
+        "gender": "Feminino",
+        "category": "Sub-17",
+        "preferredPosition": "Em Formação Geral",
+        "level": "Iniciante",
+        "classId": "turma-1793760825427",
+        "status": "Ativo",
+        "enrollmentDate": "2026-11-04",
+        "guardian": {
+          "name": "Carlos Eduardo Silva",
+          "phone": "(11) 97777-6666",
+          "relationship": "Pai",
+          "email": "",
+          "allowWhatsAppNotifications": true
+        },
+        "avatarSeed": "std_1793822993504_dodhw",
+        "cardValidUntil": "2026-12-31"
+      },
+      {
         "id": "std-01",
         "registrationNumber": "VOL-2026-001",
         "fullName": "Isabelly Christine Ramos De Lira",
@@ -61,26 +84,26 @@
         "cardValidUntil": "2026-12-31"
       },
       {
-        "id": "std_1793822993504_dodhw",
-        "registrationNumber": "VOL-2026-003",
-        "fullName": "Julia Santos Silva",
-        "birthDate": "2011-08-20",
+        "id": "std_1793831868086_pkaqm",
+        "registrationNumber": "VOL-2026-004",
+        "fullName": "Kemilly vitória dos Santos",
+        "birthDate": "2011-10-25",
         "age": 15,
         "gender": "Feminino",
         "category": "Sub-17",
         "preferredPosition": "Em Formação Geral",
         "level": "Iniciante",
-        "classId": "turma-1793760825427",
+        "classId": "turma-1793805403704",
         "status": "Ativo",
         "enrollmentDate": "2026-11-04",
         "guardian": {
-          "name": "Carlos Eduardo Silva",
-          "phone": "(11) 97777-6666",
+          "name": "Jenivaldo Fernandes Santos",
+          "phone": "(11) 94366-2930",
           "relationship": "Pai",
           "email": "",
           "allowWhatsAppNotifications": true
         },
-        "avatarSeed": "std_1793822993504_dodhw",
+        "avatarSeed": "std_1793831868086_pkaqm",
         "cardValidUntil": "2026-12-31"
       }
     ],
@@ -288,6 +311,18 @@
         "status": "Enviado"
       },
       {
+        "id": "notif_1793831868087",
+        "studentId": "std_1793831868086_pkaqm",
+        "studentName": "Kemilly vitória dos Santos",
+        "guardianName": "Jenivaldo Fernandes Santos",
+        "guardianPhone": "(11) 94366-2930",
+        "type": "Boas-Vindas Matrícula",
+        "message": "Bem-vindo(a) à Academia VoleiAraça! A matrícula VOL-2026-004 foi confirmada com sucesso para o atleta Kemilly vitória dos Santos na categoria Sub-17.",
+        "channel": "WhatsApp",
+        "sentAt": "2026-11-04T22:37:48.087Z",
+        "status": "Enviado"
+      },
+      {
         "id": "notif-02",
         "studentId": "",
         "studentName": "Lívia Ribeiro Duarte",
@@ -352,6 +387,6 @@
       }
     ],
     "sponsorSize": 28,
-    "updatedAt": "2026-11-04T20:09:59.736Z"
+    "updatedAt": "2026-11-05T11:21:13.863Z"
   }
 }
