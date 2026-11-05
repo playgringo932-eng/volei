@@ -221,7 +221,9 @@ function AttendanceSessionBoard({
       }
 
       return true;
-    });
+    }).sort((a, b) =>
+      (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' })
+    );
   }, [classStudents, filterQuery, statusFilter, currentEntries]);
 
   return (

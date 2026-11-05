@@ -412,15 +412,17 @@ export function QrCodeScannerModal({
   };
 
   // Filter roster for quick simulation
-  const filteredRoster = students.filter((s) => {
-    if (!rosterSearch.trim()) return true;
-    const q = rosterSearch.toLowerCase();
-    return (
-      s.fullName.toLowerCase().includes(q) ||
-      s.registrationNumber.toLowerCase().includes(q) ||
-      s.category.toLowerCase().includes(q)
-    );
-  });
+  const filteredRoster = students
+    .filter((s) => {
+      if (!rosterSearch.trim()) return true;
+      const q = rosterSearch.toLowerCase();
+      return (
+        s.fullName.toLowerCase().includes(q) ||
+        s.registrationNumber.toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' }));
 
   if (!isOpen) return null;
 
@@ -477,11 +479,14 @@ export function QrCodeScannerModal({
               onChange={(e) => setSelectedClassOverride(e.target.value)}
               className="bg-white border border-blue-300 text-blue-950 font-bold px-2.5 py-1 rounded-lg text-xs focus:outline-none focus:border-blue-600"
             >
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  [{c.shift}] {c.name}
-                </option>
-              ))}
+              {classes
+                .slice()
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    [{c.shift}] {c.name}
+                  </option>
+                ))}
             </select>
           </div>
 

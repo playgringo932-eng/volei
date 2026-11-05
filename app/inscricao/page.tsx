@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Trophy,
@@ -20,12 +20,66 @@ import {
   HeartPulse,
   Activity,
   Layers,
+  Camera,
+  Upload,
+  Trash2,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { VolleyballClass, Student } from '@/types/volleyball';
 import { calculateAge, getCategoryByAge, formatBrazilianPhone } from '@/lib/volleyballHelpers';
 import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 import { INITIAL_CLASSES } from '@/lib/mockData';
 import { storageService } from '@/lib/storage';
+import { getAthletePhoto } from '@/lib/avatarHelpers';
+
+/**
+ * Converte e otimiza qualquer formato de imagem enviado (PNG, JPG, JPEG, WEBP, GIF, HEIC, BMP, SVG, etc.)
+ */
+async function processImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Falha ao processar o arquivo de imagem.'));
+    reader.onload = () => {
+      const result = reader.result as string;
+      if (file.type === 'image/svg+xml') {
+        resolve(result);
+        return;
+      }
+      const img = new Image();
+      img.onerror = () => resolve(result);
+      img.onload = () => {
+        try {
+          const maxDim = 640;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.88));
+          } else {
+            resolve(result);
+          }
+        } catch {
+          resolve(result);
+        }
+      };
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function PublicEnrollmentPage() {
   const [classes, setClasses] = useState<VolleyballClass[]>(INITIAL_CLASSES);
@@ -38,6 +92,12 @@ export default function PublicEnrollmentPage() {
   const [classId, setClassId] = useState('');
   const [medicalConditions, setMedicalConditions] = useState('');
   const [allergies, setAllergies] = useState('');
+
+  // Foto do Aluno (suporta PNG, JPG, JPEG, WEBP, GIF, HEIC, BMP, SVG e todos os outros)
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Guardian
   const [guardianName, setGuardianName] = useState('');
@@ -53,7 +113,7 @@ export default function PublicEnrollmentPage() {
 
   const logoSrc = '/assets/aistudio/WhatsApp_Image_2026-11-03_at_11.29.13_1739d5bf.jpeg';
 
-  // Load available classes from server
+  // Load available classes from server, sorted alphabetically
   useEffect(() => {
     async function loadAvailableClasses() {
       try {
@@ -61,8 +121,11 @@ export default function PublicEnrollmentPage() {
         if (res.ok) {
           const json = await res.json();
           if (json.classes && Array.isArray(json.classes) && json.classes.length > 0) {
-            setClasses(json.classes);
-            setClassId(json.classes[0].id);
+            const sortedClasses = json.classes
+              .slice()
+              .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
+            setClasses(sortedClasses);
+            setClassId(sortedClasses[0]?.id || '');
           } else {
             setClassId(INITIAL_CLASSES[0].id);
           }
@@ -79,6 +142,21 @@ export default function PublicEnrollmentPage() {
   const currentAge = birthDate ? calculateAge(birthDate) : 0;
   const currentCategory = birthDate && currentAge >= 7 && currentAge <= 17 ? getCategoryByAge(currentAge) : null;
   const isAgeValid = birthDate ? currentAge >= 7 && currentAge <= 17 : true;
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    try {
+      const optimized = await processImageFile(file);
+      setPhotoUrl(optimized);
+    } catch {
+      setPhotoError('Não foi possível carregar a imagem. Tente outro formato.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setGuardianPhone(formatBrazilianPhone(e.target.value));
@@ -126,6 +204,7 @@ export default function PublicEnrollmentPage() {
         birthDate,
         gender,
         classId: classId || classes[0]?.id || 'turma-m1',
+        photoUrl: photoUrl || undefined,
         medicalConditions: medicalConditions.trim() || undefined,
         allergies: allergies.trim() || undefined,
         guardian: {
@@ -184,6 +263,11 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
     setFullName('');
     setBirthDate('');
     setGender('Masculino');
+    setPhotoUrl('');
+    setPhotoError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setMedicalConditions('');
     setAllergies('');
     setGuardianName('');
@@ -253,11 +337,19 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
           <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
             {/* Cartão de Confirmação e Comprovante */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-emerald-500/40 relative overflow-hidden">
-              <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100 space-y-3">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner">
-                  <CheckCircle2 className="w-9 h-9" />
+              <div className="flex flex-col sm:flex-row items-center gap-4 pb-6 border-b border-slate-100 text-center sm:text-left">
+                <div className="relative shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={createdStudent.photoUrl || getAthletePhoto(createdStudent.id, createdStudent.gender)}
+                    alt={createdStudent.fullName}
+                    className="w-20 h-24 rounded-2xl object-cover border-2 border-emerald-500 shadow-md bg-slate-100"
+                  />
+                  <span className="absolute -bottom-2 -right-2 bg-emerald-600 text-white p-1 rounded-full shadow-xs">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </span>
                 </div>
-                <div>
+                <div className="flex-1">
                   <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block mb-1">
                     Inscrição Confirmada com Sucesso!
                   </span>
@@ -265,7 +357,7 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
                     {createdStudent.fullName}
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Os dados já foram cadastrados e estão visíveis para a coordenação esportiva.
+                    Os dados e a foto já foram cadastrados e estão visíveis para a coordenação esportiva.
                   </p>
                 </div>
               </div>
@@ -374,6 +466,118 @@ _Secretaria Municipal de Esportes, Lazer e Eventos de Araçariguama-SP_`;
                 <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">
                   1. Dados do Aluno / Atleta (07 a 17 Anos)
                 </h3>
+              </div>
+
+              {/* Upload de Foto do Aluno / Atleta */}
+              <div className="mb-5 p-4 rounded-2xl bg-blue-50/50 border border-blue-200">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                  {/* Input invisível para todos os formatos de imagem */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.png,.jpg,.jpeg,.pjpeg,.pjp,.webp,.gif,.bmp,.avif,.heic,.heif,.svg,.tiff"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="student-photo-upload"
+                  />
+
+                  {/* Thumbnail / Preview */}
+                  <div className="relative w-24 h-32 rounded-2xl border-2 border-dashed border-blue-300 bg-white overflow-hidden flex flex-col items-center justify-center shrink-0 shadow-xs">
+                    {isUploadingPhoto ? (
+                      <div className="flex flex-col items-center justify-center p-2 text-center text-blue-600 space-y-1">
+                        <RefreshCw className="w-6 h-6 animate-spin" />
+                        <span className="text-[10px] font-bold">Processando...</span>
+                      </div>
+                    ) : photoUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photoUrl}
+                          alt="Foto do Aluno"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhotoUrl('');
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white shadow-xs hover:bg-rose-700 transition-colors cursor-pointer"
+                          title="Remover foto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors cursor-pointer"
+                      >
+                        <Camera className="w-7 h-7 mb-1 text-blue-600" />
+                        <span className="text-[10px] font-bold text-slate-600 leading-tight">Adicionar Foto</span>
+                        <span className="text-[8px] text-slate-400">3x4 ou selfie</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Detalhes e Botões de Escolha */}
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <div>
+                      <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                        <Camera className="w-4 h-4 text-blue-700" />
+                        <label className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                          Foto Oficial do Aluno / Carteirinha
+                        </label>
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                          Opcional
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-slate-600 mt-1 leading-relaxed">
+                        Envie uma foto do rosto do atleta para constar na carteirinha e na ficha de presença.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingPhoto}
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{photoUrl ? 'Trocar Foto' : 'Escolher / Tirar Foto'}</span>
+                      </button>
+
+                      {photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhotoUrl('');
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          className="px-3 py-1.5 rounded-xl border border-rose-300 hover:bg-rose-50 text-rose-700 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remover</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5 text-[10px] text-slate-500">
+                      <ImageIcon className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span>
+                        Aceita <strong>PNG, JPG, JPEG, WEBP, GIF, HEIC, BMP, SVG</strong> e todos os outros formatos.
+                      </span>
+                    </div>
+
+                    {photoError && (
+                      <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-semibold rounded-xl flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>{photoError}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

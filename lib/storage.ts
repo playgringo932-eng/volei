@@ -71,29 +71,43 @@ export {
 // STORAGE SERVICE IMPLEMENTATION
 // ==========================================
 
+export function sortStudentsAlphabetically(students: Student[]): Student[] {
+  return [...students].sort((a, b) =>
+    (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' })
+  );
+}
+
+export function sortClassesAlphabetically(classes: VolleyballClass[]): VolleyballClass[] {
+  return [...classes].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+  );
+}
+
 export const storageService = {
   // --- STUDENTS ---
   getStudents(): Student[] {
-    if (!isClient) return INITIAL_STUDENTS.map(normalizeStudent);
+    if (!isClient) return sortStudentsAlphabetically(INITIAL_STUDENTS.map(normalizeStudent));
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
       if (!data) {
-        const initial = INITIAL_STUDENTS.map(normalizeStudent);
+        const initial = sortStudentsAlphabetically(INITIAL_STUDENTS.map(normalizeStudent));
         localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(initial));
         return initial;
       }
       const parsed = JSON.parse(data);
-      if (!Array.isArray(parsed)) return INITIAL_STUDENTS.map(normalizeStudent);
-      return parsed.map(normalizeStudent);
+      if (!Array.isArray(parsed)) return sortStudentsAlphabetically(INITIAL_STUDENTS.map(normalizeStudent));
+      return sortStudentsAlphabetically(parsed.map(normalizeStudent));
     } catch {
-      return INITIAL_STUDENTS.map(normalizeStudent);
+      return sortStudentsAlphabetically(INITIAL_STUDENTS.map(normalizeStudent));
     }
   },
 
   saveStudents(students: Student[], sync = true): void {
     if (!isClient) return;
     try {
-      const normalized = (Array.isArray(students) ? students : []).map(normalizeStudent);
+      const normalized = sortStudentsAlphabetically(
+        (Array.isArray(students) ? students : []).map(normalizeStudent)
+      );
       localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(normalized));
       window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'students' } }));
       if (sync) syncToServer({ students: normalized });
@@ -104,8 +118,8 @@ export const storageService = {
 
   addStudent(student: Student): void {
     const list = this.getStudents();
-    list.unshift(normalizeStudent(student));
-    this.saveStudents(list);
+    list.push(normalizeStudent(student));
+    this.saveStudents(sortStudentsAlphabetically(list));
   },
 
   updateStudent(student: Student): void {
@@ -113,7 +127,7 @@ export const storageService = {
     const index = list.findIndex((s) => s.id === student.id);
     if (index !== -1) {
       list[index] = normalizeStudent(student);
-      this.saveStudents(list);
+      this.saveStudents(sortStudentsAlphabetically(list));
     }
   },
 
@@ -138,26 +152,28 @@ export const storageService = {
 
   // --- CLASSES (TURMAS) ---
   getClasses(): VolleyballClass[] {
-    if (!isClient) return INITIAL_CLASSES.map(normalizeClass);
+    if (!isClient) return sortClassesAlphabetically(INITIAL_CLASSES.map(normalizeClass));
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
       if (!data) {
-        const initial = INITIAL_CLASSES.map(normalizeClass);
+        const initial = sortClassesAlphabetically(INITIAL_CLASSES.map(normalizeClass));
         localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(initial));
         return initial;
       }
       const parsed = JSON.parse(data);
-      if (!Array.isArray(parsed)) return INITIAL_CLASSES.map(normalizeClass);
-      return parsed.map(normalizeClass);
+      if (!Array.isArray(parsed)) return sortClassesAlphabetically(INITIAL_CLASSES.map(normalizeClass));
+      return sortClassesAlphabetically(parsed.map(normalizeClass));
     } catch {
-      return INITIAL_CLASSES.map(normalizeClass);
+      return sortClassesAlphabetically(INITIAL_CLASSES.map(normalizeClass));
     }
   },
 
   saveClasses(classes: VolleyballClass[], sync = true): void {
     if (!isClient) return;
     try {
-      const normalized = (Array.isArray(classes) ? classes : []).map(normalizeClass);
+      const normalized = sortClassesAlphabetically(
+        (Array.isArray(classes) ? classes : []).map(normalizeClass)
+      );
       localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(normalized));
       window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { type: 'classes' } }));
       if (sync) syncToServer({ classes: normalized });

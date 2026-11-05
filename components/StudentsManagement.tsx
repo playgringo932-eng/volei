@@ -113,7 +113,9 @@ export function StudentsManagement({
       }
 
       return true;
-    });
+    }).sort((a, b) =>
+      (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' })
+    );
   }, [students, searchTerm, selectedClassFilter, selectedShiftFilter, selectedCategoryFilter, selectedRiskFilter, classMap]);
 
   const handleExportExcel = () => {

@@ -142,10 +142,10 @@ export function readSharedState(): SharedState {
         },
         data: {
           students: Array.isArray(parsed.data?.students) && parsed.data.students.length > 0
-            ? parsed.data.students.map(normalizeStudent)
+            ? parsed.data.students.map(normalizeStudent).sort((a: any, b: any) => (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' }))
             : inMemoryState.data.students,
           classes: Array.isArray(parsed.data?.classes) && parsed.data.classes.length > 0
-            ? parsed.data.classes.map(normalizeClass)
+            ? parsed.data.classes.map(normalizeClass).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }))
             : inMemoryState.data.classes,
           sessions: Array.isArray(parsed.data?.sessions)
             ? parsed.data.sessions.map(normalizeSession)
@@ -221,12 +221,16 @@ export async function fetchFromSupabaseOnServer(force = false): Promise<SharedSt
     let changed = false;
 
     if (resClasses?.data && Array.isArray(resClasses.data) && resClasses.data.length > 0) {
-      inMemoryState.data.classes = resClasses.data.map(normalizeClass);
+      inMemoryState.data.classes = resClasses.data
+        .map(normalizeClass)
+        .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
       changed = true;
     }
 
     if (resStudents?.data && Array.isArray(resStudents.data) && resStudents.data.length > 0) {
-      inMemoryState.data.students = resStudents.data.map(normalizeStudent);
+      inMemoryState.data.students = resStudents.data
+        .map(normalizeStudent)
+        .sort((a: any, b: any) => (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' }));
       changed = true;
     }
 

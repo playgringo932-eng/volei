@@ -63,7 +63,9 @@ export function AttendanceReportsView({
       }
 
       return true;
-    });
+    }).sort((a, b) =>
+      (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' })
+    );
   }, [students, selectedClassId, searchQuery, filterRiskOnly, selectedMonth]);
 
   const overallStats = useMemo(() => {

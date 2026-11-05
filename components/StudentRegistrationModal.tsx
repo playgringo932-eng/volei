@@ -280,7 +280,10 @@ function StudentForm({
               onChange={(e) => setClassId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
             >
-              {classes.map((cls) => (
+              {classes
+                .slice()
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }))
+                .map((cls) => (
                 <option key={cls.id} value={cls.id}>
                   [{cls.shift.toUpperCase()}] {cls.name} — {cls.startTime} às {cls.endTime} (
                   {cls.daysOfWeek.join('/')}) • {cls.court}

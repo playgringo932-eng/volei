@@ -35,6 +35,11 @@ export async function GET() {
       };
     });
 
+    // Ordenação alfabética das turmas para o formulário
+    classesWithOccupancy.sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+    );
+
     return NextResponse.json({
       success: true,
       classes: classesWithOccupancy,
@@ -185,6 +190,7 @@ export async function POST(req: NextRequest) {
       enrollmentDate: new Date().toISOString().split('T')[0],
       medicalConditions: body.medicalConditions?.trim() || undefined,
       allergies: body.allergies?.trim() || undefined,
+      photoUrl: body.photoUrl && typeof body.photoUrl === 'string' && body.photoUrl.trim() ? body.photoUrl.trim() : undefined,
       avatarSeed: studentId,
       cardValidUntil: '2026-12-31',
       guardian: {
@@ -225,7 +231,7 @@ export async function POST(req: NextRequest) {
           guardian: newStudent.guardian,
           notes: null,
           avatar_seed: newStudent.avatarSeed || null,
-          photo_url: null,
+          photo_url: newStudent.photoUrl || null,
           card_valid_until: newStudent.cardValidUntil || '2026-12-31',
           updated_at: new Date().toISOString(),
         };
@@ -310,7 +316,9 @@ export async function POST(req: NextRequest) {
 
     state.data = {
       ...state.data,
-      students: Array.from(studentMap.values()),
+      students: Array.from(studentMap.values()).sort((a, b) =>
+        (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' })
+      ),
       notifications: [welcomeNotif, ...(state.data?.notifications || [])],
       updatedAt: new Date().toISOString(),
     };

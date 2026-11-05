@@ -94,6 +94,14 @@ export async function POST(req: NextRequest) {
       updatedClasses = (current.data.classes || []).filter((c) => c.id !== String(body.data.deletedClassId));
     }
 
+    // Ordenação alfabética estrita para todas as listas
+    updatedStudents.sort((a, b) =>
+      (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' })
+    );
+    updatedClasses.sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+    );
+
     // Fusão inteligente de Sessões de Presença
     let updatedSessions: DailyAttendanceSession[] = current.data.sessions || [];
     if (body.data?.sessions && Array.isArray(body.data.sessions)) {

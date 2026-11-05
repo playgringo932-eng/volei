@@ -138,11 +138,13 @@ export function ClassesManagement({
 
   const shifts: ShiftType[] = ['Manhã', 'Tarde', 'Noite'];
 
-  // Filter classes by selected Sub category
-  const filteredClasses = classes.filter((c) => {
-    if (selectedCategoryTab === 'all') return true;
-    return normalizeCategory(c.category, c.maxAge) === selectedCategoryTab;
-  });
+  // Filter classes by selected Sub category, ordered alphabetically
+  const filteredClasses = classes
+    .filter((c) => {
+      if (selectedCategoryTab === 'all') return true;
+      return normalizeCategory(c.category, c.maxAge) === selectedCategoryTab;
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
 
   // Stats for the 3 official subs
   const sub10Classes = classes.filter((c) => normalizeCategory(c.category, c.maxAge) === 'Sub-10');

@@ -389,11 +389,14 @@ export function NotificationsCenter({
                 onChange={(e) => setSelectedStudentId(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-semibold focus:bg-white"
               >
-                {students.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.fullName} ({st.category}) — Resp: {st.guardian.name} ({st.guardian.phone})
-                  </option>
-                ))}
+                {students
+                  .slice()
+                  .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'pt-BR', { sensitivity: 'base' }))
+                  .map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.fullName} ({st.category}) — Resp: {st.guardian.name} ({st.guardian.phone})
+                    </option>
+                  ))}
               </select>
             </div>
 
