@@ -170,14 +170,16 @@ export function VolleyballAcademyMain() {
     };
   }, []);
 
-  // Intervalo de verificação em segundo plano para manter celular e PC sincronizados ao vivo
+  // Intervalo de verificação inteligente em segundo plano (apenas com aba visível para poupar limite do Supabase)
   useEffect(() => {
     const interval = setInterval(async () => {
-      const pulled = await storageService.pullFromSharedSync();
-      if (pulled) {
-        reloadData();
+      if (document.visibilityState === 'visible') {
+        const pulled = await storageService.pullFromSharedSync();
+        if (pulled) {
+          reloadData();
+        }
       }
-    }, 4000);
+    }, 25000);
     return () => clearInterval(interval);
   }, []);
 

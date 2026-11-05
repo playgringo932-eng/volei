@@ -25,9 +25,10 @@ export const dynamic = 'force-dynamic';
  * Retorna as credenciais de autenticação, configurações e os dados mais recentes
  * sincronizados diretamente do Supabase em nuvem.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const state = await fetchFromSupabaseOnServer(true);
+    const force = req.nextUrl.searchParams.get('force') === 'true';
+    const state = await fetchFromSupabaseOnServer(force);
     return NextResponse.json({
       success: true,
       config: state.config,

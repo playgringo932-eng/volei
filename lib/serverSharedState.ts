@@ -188,13 +188,24 @@ export function writeSharedState(state: SharedState): void {
   }
 }
 
+let supabaseBackoffUntil = 0;
+const CACHE_TTL_MS = 20000; // 20 segundos de cache para economizar quota do Supabase
+
 /**
  * Consulta o banco Supabase em nuvem diretamente no servidor para garantir
- * que qualquer aparelho (celular, tablet ou PC) receba SEMPRE a última versão salva.
+ * que qualquer aparelho (celular, tablet ou PC) receba SEMPRE a última versão salva,
+ * com proteção contra esgotamento de quota e rate-limits.
  */
 export async function fetchFromSupabaseOnServer(force = false): Promise<SharedState> {
   const now = Date.now();
-  if (!force && now - lastSupabaseFetchTime < 1500) {
+
+  // Se o Supabase retornou erro de limite recentemente, aguarda o período de resfriamento
+  if (!force && now < supabaseBackoffUntil) {
+    return inMemoryState;
+  }
+
+  // Se o cache tem menos de 20 segundos e não foi forçado, retorna a memória
+  if (!force && now - lastSupabaseFetchTime < CACHE_TTL_MS) {
     return inMemoryState;
   }
 
@@ -210,13 +221,24 @@ export async function fetchFromSupabaseOnServer(force = false): Promise<SharedSt
     ]);
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout ao conectar com Supabase')), 10000)
+      setTimeout(() => reject(new Error('Timeout ao conectar com Supabase')), 8000)
     );
 
     const [resClasses, resStudents, resSessions, resNotifs] = await Promise.race([
       fetchPromise,
       timeoutPromise,
     ]);
+
+    // Verifica se houve erro de limite/quota nas respostas
+    const anyError = resClasses?.error || resStudents?.error || resSessions?.error || resNotifs?.error;
+    if (anyError) {
+      const errStr = String(anyError.message || anyError.details || anyError.code || '');
+      if (errStr.includes('rate') || errStr.includes('quota') || errStr.includes('limit') || errStr.includes('429')) {
+        console.warn('Aviso: Limite de requisições do Supabase atingido. Ativando resfriamento de 60s.');
+        supabaseBackoffUntil = Date.now() + 60000;
+        return inMemoryState;
+      }
+    }
 
     let changed = false;
 
@@ -260,8 +282,9 @@ export async function fetchFromSupabaseOnServer(force = false): Promise<SharedSt
       inMemoryState.data.updatedAt = new Date().toISOString();
       writeSharedState(inMemoryState);
     }
-  } catch (err) {
-    console.warn('Aviso: Falha ou timeout ao consultar Supabase no servidor, usando cache local:', err);
+  } catch (err: any) {
+    console.warn('Aviso: Falha ou limite no Supabase, mantendo dados seguros no cache local:', err?.message || err);
+    supabaseBackoffUntil = Date.now() + 45000;
     readSharedState();
   }
 
@@ -353,7 +376,32 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
       }));
 
       validStudentIds = new Set<string>(formattedStudents.map((s: any) => s.id));
-      await client.from('students').upsert(formattedStudents, { onConflict: 'id' });
+      const { error: errS } = await client.from('students').upsert(formattedStudents, { onConflict: 'id' });
+      if (errS && (errS.message?.includes('column of') || errS.code === 'PGRST204')) {
+        const simplifiedStudents = data.students.map((s: any) => ({
+          id: String(s.id),
+          registration_number: s.registrationNumber || s.registration_number,
+          full_name: s.fullName || s.full_name,
+          birth_date: s.birthDate || s.birth_date,
+          age: s.age,
+          gender: s.gender,
+          category: s.category,
+          class_id: (s.classId || s.class_id) && validClassIds.has(String(s.classId || s.class_id))
+            ? String(s.classId || s.class_id)
+            : null,
+          status: s.status || 'Ativo',
+          photo_url: s.photoUrl || s.photo_url || null,
+          guardian_name: s.guardian?.name || s.guardian_name || 'Responsável',
+          guardian_relationship: s.guardian?.relationship || s.guardian_relationship || 'Responsável Legal',
+          guardian_phone: s.guardian?.phone || s.guardian_phone || '',
+          allow_whatsapp_notifications: s.guardian?.allowWhatsAppNotifications ?? true,
+          medical_conditions: s.medicalConditions || s.medical_conditions || null,
+          allergies: s.allergies || null,
+          card_valid_until: s.cardValidUntil || s.card_valid_until || '2026-12-31',
+          updated_at: new Date().toISOString(),
+        }));
+        await client.from('students').upsert(simplifiedStudents, { onConflict: 'id' });
+      }
     }
 
     // 3. Chamadas de Presença - apenas sessões com turmas válidas
@@ -373,7 +421,30 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
           shift: sess.shift || 'Tarde',
         }));
 
-        await client.from('attendance_sessions').upsert(formattedSessions, { onConflict: 'id' });
+        const { error: errA } = await client.from('attendance_sessions').upsert(formattedSessions, { onConflict: 'id' });
+        if (errA && (errA.message?.includes('column of') || errA.code === 'PGRST204')) {
+          const simplifiedSessions = validSessions.map((sess: any) => {
+            const entries = sess.entries || {};
+            const vals = Object.values(entries) as any[];
+            const present = vals.filter((v: any) => v?.status === 'Presente').length;
+            const absent = vals.filter((v: any) => v?.status === 'Ausente').length;
+            const justified = vals.filter((v: any) => v?.status === 'Justificado').length;
+            return {
+              id: sess.id,
+              class_id: String(sess.classId || sess.class_id),
+              class_name: sess.classId || sess.class_id,
+              instructor_name: sess.instructorName || sess.instructor_name,
+              date: sess.date,
+              records: entries,
+              total_present: present,
+              total_absent: absent,
+              total_justified: justified,
+              attendance_rate: vals.length > 0 ? (present / vals.length) * 100 : 0,
+              updated_at: new Date().toISOString(),
+            };
+          });
+          await client.from('attendance_sessions').upsert(simplifiedSessions, { onConflict: 'id' });
+        }
       }
     }
 
@@ -387,7 +458,6 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
         student_name: n.studentName || n.student_name,
         guardian_name: n.guardianName || n.guardian_name,
         guardian_phone: n.guardianPhone || n.guardian_phone,
-        guardian_email: n.guardianEmail || n.guardian_email || null,
         type: n.type,
         message: n.message,
         channel: n.channel || 'WhatsApp',
@@ -395,7 +465,20 @@ export async function saveToSupabaseOnServer(data: Partial<SharedState['data']>)
         status: n.status || 'Enviado',
       }));
 
-      await client.from('notifications').upsert(formattedNotifs, { onConflict: 'id' });
+      const { error: errN } = await client.from('notifications').upsert(formattedNotifs, { onConflict: 'id' });
+      if (errN && (errN.message?.includes('column of') || errN.code === 'PGRST204')) {
+        const minimalNotifs = data.notifications.map((n: any) => ({
+          id: n.id,
+          student_name: n.studentName || n.student_name,
+          guardian_name: n.guardianName || n.guardian_name,
+          guardian_phone: n.guardianPhone || n.guardian_phone,
+          type: n.type,
+          message: n.message,
+          channel: n.channel || 'WhatsApp',
+          status: n.status || 'Enviado',
+        }));
+        await client.from('notifications').upsert(minimalNotifs, { onConflict: 'id' });
+      }
     }
   } catch (err) {
     console.warn('Aviso: Falha ao persistir no Supabase no servidor:', err);
